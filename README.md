@@ -1,4 +1,4 @@
-# Dragonsnake21
+# medrob-project
 
 Final Project for Medical Robotics course 2018-2019, Università La Sapienza Roma
 

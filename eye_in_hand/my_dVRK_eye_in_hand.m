@@ -1,47 +1,23 @@
-%%
-%   INIT STUFF
-%%
+% INIT STUFF
+
 cd(fileparts(mfilename('fullpath')));
-clear all;
+clear ;
 close all;
 clc;
 
 pause(3);
-%%
+
 % CONNECTION TO VREP
-%%
-fprintf(1,'START...  \n');
-vrep=remApi('remoteApi'); % using the prototype file (remoteApiProto.m)
-vrep.simxFinish(-1); % just in case, close all opened connections
-clientID=vrep.simxStart('127.0.0.1',19999,true,true,5000,5);
-fprintf(1,'client %d\n', clientID);
-if (clientID > -1)
-	fprintf(1,'Connection: OK... \n');
-else
-	fprintf(2,'Connection: ERROR \n');
-	return;
-end
-%   
-
-%%
+[clientID , vrep] = init_connection();
+  
 % COLLECTING HANDLES
-%%
+% vision sensor h_VS - force sensor h_FS - prox sensor h_PS - end effector h_EE
+[h_VS , h_FS , h_PS , h_EE ] = collect_handles(clientID , vrep);
 
-% vision sensor
-[~, h_VS]=vrep.simxGetObjectHandle(clientID, 'Vision_sensor', vrep.simx_opmode_blocking);
+% COLLECTING LANDMARK HANDLES 
+f = 7; % number of foursome of landamrks
+h_L = collect_landamrk_handle(clientID, f, vrep); 
 
-% force sensor
-[~, h_FS]=vrep.simxGetObjectHandle(clientID, 'Force_sensor', vrep.simx_opmode_blocking);
-
-% end effector
-[~, h_EE]=vrep.simxGetObjectHandle(clientID, 'FollowedDummy', vrep.simx_opmode_blocking);
-
-% landmarks
-for k=1:4
-    for h=1:8
-        [~, h_L(k,h)]=vrep.simxGetObjectHandle(clientID, ['Landmark', num2str(h), num2str(k)], vrep.simx_opmode_blocking);
-    end
-end
 
 %%
 %   SETTINGS
@@ -83,7 +59,7 @@ ee_pose_d=[ -1.5387;   -0.1375;    0.7753;  pi;         0;         0];
 % two possible control modes:
     % mode 0: go-to-home control mode; 
     % mode 1: visual servoing eye-on-hand control mode;
-mode=0
+mode = 0
 
 % mode 0 overview:
 	% i) features and depth extraction
@@ -99,13 +75,23 @@ mode=0
 % mode 1 is just a Cartesian proportionale regulator
 
 %start from landmark h+1
-h=1-1;
+h=1;
 %
 
 % loop
 ok=false;
-while h<7
-    
+
+iterations = 3; 
+% time = linspace(0, 675*iterations,675*iterations);
+% distance = linspace(0, 675*iterations,1);
+
+while h<=iterations
+    % state: the detection state (false=no detection)
+    % detectedPoint: the detected point coordinates (relative to the sensor reference frame)
+    % detectedObjectHandle: handle of detected object
+    % detectedSurfaceNormalVector: normalized normal vector of detected surface (relative to sensor reference frame)
+    [~, state, detectedPoint,~,~ ]=vrep.simxReadProximitySensor(clientID, h_PS, vrep.simx_opmode_streaming);
+
     if mode==1
         
         %%
@@ -115,6 +101,7 @@ while h<7
         us=zeros(4,1);
         vs=zeros(4,1);
         zs=zeros(4,1);
+        
         for k=1:4
             %
             while ~ok
@@ -179,9 +166,13 @@ while h<7
         %
         force_torque=[force'; torque'];
         force_torque=round(force_torque,2);
-        %
+        
+        % disp("force");
+        % disp(force_torque(1:3));
+        % disp("torque");
+        % disp(torque);
+        
         err= err - J*L*(force_torque_d-force_torque);
-        %
         
         if mod(c,5)==0
             x_d=scatter(err([1;3;5;7])+us,err([2;4;6;8])+vs,'r','filled');
@@ -241,6 +232,7 @@ while h<7
         % evaluating exit condition
         if max(err)<=0.1
            mode=1
+           disp("mode changed")
            h=h+1;
            fprintf(1,'GOING TOWARD LANDMARK: %d \n',h);
            
@@ -262,26 +254,81 @@ while h<7
         ee_displacement = H*err;
         %
 
-        %updating the pose
+        % updating the pose
         ee_pose= ee_pose + ee_displacement;
         [~]= vrep.simxSetObjectPosition(clientID, h_EE, -1, ee_pose(1:3), vrep.simx_opmode_oneshot);
         [~]= vrep.simxSetObjectOrientation(clientID, h_EE, -1, ee_pose(4:6), vrep.simx_opmode_oneshot);
-        %   
-    end
         
-    pause(0.05);
+       
+    end
+    
+    pause(0.05);   
+    
 end
+
 
 %%
 %	FUNCTIONS
 %%
+
+function [clientID , vrep] = init_connection()
+
+    % STABILIZING CONNECTION WITH VREP ENVIROMENT
+
+    fprintf(1,'START...  \n');
+    vrep=remApi('remoteApi'); % using the prototype file (remoteApiProto.m)
+    vrep.simxFinish(-1); % just in case, close all opened connections
+    clientID=vrep.simxStart('127.0.0.1',19999,true,true,5000,5);
+    fprintf(1,'client %d\n', clientID);
+    if (clientID > -1)
+        fprintf(1,'Connection: OK... \n');
+    else
+        fprintf(2,'Connection: ERROR \n');
+        return;
+    end
+    
+end
+
+function [h_VS, h_FS, h_PS, h_EE] = collect_handles(clientID, vrep)
+
+    % vision sensor
+    [~, h_VS]=vrep.simxGetObjectHandle(clientID, 'Vision_sensor', vrep.simx_opmode_blocking);
+
+    % force sensor
+    [~, h_FS]=vrep.simxGetObjectHandle(clientID, 'Force_sensor', vrep.simx_opmode_blocking);
+
+    % prox sensor
+    [~, h_PS]=vrep.simxGetObjectHandle(clientID, 'Proximity_sensor', vrep.simx_opmode_blocking);
+
+    % end effector
+    [~, h_EE]=vrep.simxGetObjectHandle(clientID, 'FollowedDummy', vrep.simx_opmode_blocking);
+
+end
+
+function [h_L] = collect_landamrk_handle(clientID, f, vrep)
+% COLLECTION OF HANDLES FOR EACH LANDMARK
+    for k=1:4
+        for h=1:f
+            [~, h_L(k,h)]=vrep.simxGetObjectHandle(clientID, ['Landmark', num2str(h), num2str(k)], vrep.simx_opmode_blocking);
+        end
+    end
+end
+
+
 function [J] = build_point_jacobian(u,v,z,fl)
     J = [ -fl/z     0          u/z     (u*v)/fl        -(fl+(u^2)/fl)      v; ...
           0         -fl/z      v/z     (fl+(v^2)/fl)    -(u*v)/fl          -u];
 
 end
 
-%%
+
+% non usato -> la norma di detectedPoint è già la distanza
+function [distance] = computeDistance(A,B)
+    distance = norm(sqrt(sum((A - B) .^ 2)));
+
+end
+
+
 %	OLD
 %%
 

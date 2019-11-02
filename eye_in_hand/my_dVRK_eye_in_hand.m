@@ -23,28 +23,29 @@ h_L = collect_landamrk_handle(clientID, f, vrep);
 %   SETTINGS
 %%
 
-%landmarks colors (old)
+% landmarks colors (old)
 %grays=[0.8; 0.6; 0.4; 0.2]*255;     %landmarks' gray shades
 
-%focal length (depth of the near clipping plane)
+% focal length (depth of the near clipping plane)
 fl=0.001;
 
 % control gain in mode 0 (see below)
 K = eye(6)*(10^-3);
 
-%control gain in mode 1 (see below)
+% control gain in mode 1 (see below)
 H = eye(6)*(10^-1);
 
+% new: mik
 % compliance matrix
-L = eye(6)*(10);
+C = eye(6)*(10);
 
 % desired features
 % loop rimbalzi
-%us_d=[ -1.4987; 1.5013; 1.4997; -1.5004]*0.001;
-%vs_d=[ -1.5005; -1.4988; 1.5012; 1.4995]*0.001;
+% us_d=[ -1.4987; 1.5013; 1.4997; -1.5004]*0.001;
+% vs_d=[ -1.5005; -1.4988; 1.5012; 1.4995]*0.001;
 % un rimbalzo
-us_d=[ -0.1959; 0.2057; 0.2056; -0.1960]*0.001;
-vs_d=[ -0.2028; -0.2027; 0.1989; 0.1988]*0.001;
+us_d=[ -0.1959; 0.2057; 0.2056; -0.1960]*fl; % focal lenght
+vs_d=[ -0.2028; -0.2027; 0.1989; 0.1988]*fl;
 
 % desired force and torque
 force_torque_d=zeros(6,1);
@@ -74,18 +75,15 @@ mode = 0;
 
 % mode 1 is just a Cartesian proportionale regulator
 
-%start from landmark h+1
-h=0;
-%
+% start from FIRST landmark
+h = 0;
 
 % loop
 ok=false;
 
 iterations = 3;
-% time = linspace(0, 675*iterations,675*iterations);
-% distance = linspace(0, 675*iterations,1);
 
-while h<=iterations
+while h <= iterations
     % state: the detection state (false=no detection)
     % detectedPoint: the detected point coordinates (relative to the sensor reference frame)
     % detectedObjectHandle: handle of detected object
@@ -103,13 +101,13 @@ while h<=iterations
         zs=zeros(4,1);
         
         for k=1:4
-            %
             while ~ok
+                % EXTRACTING COORDINATES OF LANDMARK WRT VISION SENSOR
                 [~, l_position]=vrep.simxGetObjectPosition(clientID, h_L(k,h), h_VS, vrep.simx_opmode_streaming);
                 ok = norm(l_position,2)~=0;
             end
             ok=false;
-            %
+            
             zs(k)= l_position(3);
             us(k)= fl*l_position(1)/l_position(3);
             vs(k)= fl*l_position(2)/l_position(3);
@@ -120,17 +118,16 @@ while h<=iterations
             x=scatter(us,vs,'b');
             hold on;
         end
-        c=c+1;
+        c = c+1;
         
         %	II) BUILDING the IMAGE JACOBIAN and COMPUTING THE ERROR (vision-based only)
-        %%
         
-        %building the jacobian
-        J = [ build_point_jacobian(us(1),vs(1),zs(1),fl); ...
+        % new: mik 
+        % building the jacobian = INTERACTION MATRIX
+        L = [ build_point_jacobian(us(1),vs(1),zs(1),fl); ...
             build_point_jacobian(us(2),vs(2),zs(2),fl); ...
             build_point_jacobian(us(3),vs(3),zs(3),fl); ...
             build_point_jacobian(us(4),vs(4),zs(4),fl)];
-        %
         
         % computing the error
         err= [us_d(1)-us(1); ...
@@ -141,15 +138,13 @@ while h<=iterations
             vs_d(3)-vs(3); ...
             us_d(4)-us(4); ...
             vs_d(4)-vs(4)];
-        %
-        %norm(err,2)
-        
+        % norm(err,2)
         % evaluating exit condition
         if norm(err,2)<=10^-4
             if h==8
                 break;
             end
-            mode = 0; 
+            mode = 0;
             pause(1);
             disp("GOING HOME POSITION");
             continue;
@@ -172,45 +167,43 @@ while h<=iterations
         % disp(force_torque(1:3));
         % disp("torque");
         % disp(torque);
+                
+        err= err - L*C*(force_torque_d-force_torque); % ALWAYS ZERO (force_torque_d-force_torque) / why minus - ?
         
-        err= err - J*L*(force_torque_d-force_torque);
-        
-        if mod(c,5)==0
-            x_d=scatter(err([1;3;5;7])+us,err([2;4;6;8])+vs,'r','filled');
+        % PRINTING ERROR BETWEEN 
+        if mod(c,5)==0 % c modulo 5 -> ritorna il resto (stampa ogni 5 cicli)
+            x_d = scatter(err([1;3;5;7])+us,err([2;4;6;8])+vs,'r','filled');
             hold on;
         end
-        c=c+1;
+        c = c+1;
         
         %%
         %	IV) COMPUTING the EE DISPLACEMENT
         %%
         
-        %computing the displacement
-        ee_displacement = K*pinv(J)*err;
-        if norm(ee_displacement,2)<10^-2.9
+        % computing the displacement
+        ee_displacement = K*pinv(L)*err;
+        if norm(ee_displacement,2)< 10^-2.9
             ee_displacement = (ee_displacement/norm(ee_displacement,2))*10^-2.9;
         end
-        %
-        
+                
         %%
         %	V) UPDATING THE POSE
         %%
         
-        % getting the current pose
-        ee_pose= zeros(6,1);
-        %
-        
-        %updating the pose
-        ee_pose= ee_pose + ee_displacement;
+        % getting the current pose and updating
+        ee_pose= zeros(6,1) + ee_displacement;
         
         update_EE_pose(clientID , h_EE, ee_pose, vrep, mode);
-        
-        %
+           
         
     elseif mode==0
+        %% proportional regulator
         
         % getting the current pose
-        %         ee_pose = get_pose(clientID, h_EE, vrep);
+        
+        % NOT ENABLED - TODO
+        % ee_pose = get_pose(clientID, h_EE, vrep); 
         
         while ~ok
             [~, ee_position]=vrep.simxGetObjectPosition(clientID, h_EE, -1, vrep.simx_opmode_streaming);
@@ -222,8 +215,8 @@ while h<=iterations
             ok = norm(ee_orientation,2)~=0;
         end
         ok=false;
-        ee_pose= [ee_position, ee_orientation]';
         
+        ee_pose= [ee_position, ee_orientation]';
         
         % computing the error
         err=[ee_pose_d(1:3) - ee_pose(1:3); angdiff(ee_pose(4:6), ee_pose_d(4:6)) ];
@@ -248,9 +241,9 @@ while h<=iterations
         end
         %
         
-        %computing the displacement
+        % computing the displacement
+        % H gain matrix eye(6)*10.^-1
         ee_displacement = H*err;
-        %
         
         % updating the pose
         ee_pose= ee_pose + ee_displacement;
@@ -268,7 +261,7 @@ disp("######## Process ended ########");
 %	FUNCTIONS
 %%
 
-
+% new : mik
 function [] = update_EE_pose(clientID , h_EE, ee_pose, vrep, mode)
 
 % SENDIND ORIENTATION AND POSITION to EE (only mode 1 )
@@ -277,11 +270,13 @@ if(mode == 1)
     [~]= vrep.simxSetObjectOrientation(clientID, h_EE, h_EE, ee_pose(4:6), vrep.simx_opmode_oneshot);
     return
 end
+% SENDIND ORIENTATION AND POSITION to EE (only mode 0)
 [~]= vrep.simxSetObjectPosition(clientID, h_EE, -1, ee_pose(1:3), vrep.simx_opmode_oneshot);
 [~]= vrep.simxSetObjectOrientation(clientID, h_EE, -1, ee_pose(4:6), vrep.simx_opmode_oneshot);
 
 end
 
+% new : mik
 function ee_pose = get_pose(clientID, h_EE, vrep)
 
 % GETTING ABSOLUTE ORIENTATION AND POSITION OF EE
@@ -292,6 +287,7 @@ ee_pose= [ee_position, ee_orientation]';
 
 end
 
+% new : mik
 function [clientID , vrep] = init_connection()
 
 % STABILIZING CONNECTION WITH VREP ENVIROMENT
@@ -310,6 +306,7 @@ end
 
 end
 
+% new : mik
 function [h_VS, h_FS, h_PS, h_EE] = collect_handles(clientID, vrep)
 
 % vision sensor
@@ -326,6 +323,7 @@ function [h_VS, h_FS, h_PS, h_EE] = collect_handles(clientID, vrep)
 
 end
 
+% new : mik
 function [h_L] = collect_landamrk_handle(clientID, f, vrep)
 % COLLECTION OF HANDLES FOR EACH LANDMARK
 for k=1:4
@@ -337,6 +335,8 @@ end
 
 
 function [J] = build_point_jacobian(u,v,z,fl)
+% THIS IS THE INTERACTION MATRIX [L]
+%
 J = [ -fl/z     0          u/z     (u*v)/fl        -(fl+(u^2)/fl)      v; ...
     0         -fl/z      v/z     (fl+(v^2)/fl)    -(u*v)/fl          -u];
 

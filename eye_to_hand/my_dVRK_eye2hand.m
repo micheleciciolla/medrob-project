@@ -61,13 +61,15 @@ end
 fl=0.01;
 
 % control gain in mode 0 (see below)
-K = eye(6)*(10^-3);
+K = eye(6)*(10^-2);
+% v = [10^-1 10^-1 10^-1 1 1 1];
+% K = diag(v)*10^-1; 
 
 %control gain in mode 1 (see below)
 H = eye(6)*(10^-1);
 
 % compliance matrix
-L = eye(6)*(10);
+L = eye(6)*(10^-1);
 
 % desired features
 for k=1:4
@@ -86,7 +88,7 @@ for k=1:4
 end
 
 % desired force and torque
-force_torque_d=zeros(6,1);
+force_torque_d=zeros(6,1)+[0.001 0.001 0.001 0 0 0];
 
 % end effector home pose
 ee_pose_d=[ -1.5413e+0;   -4.0699e-2;    +7.2534e-1;  -1.80e+2;         0;         0];
@@ -185,12 +187,12 @@ while h<6
             ok = true; %norm(force,2)~=0;
         end
         ok=false;
-        %
+        
         force_torque=[force'; torque'];
         force_torque=round(force_torque,2);
-        %
+           
         err=err + J*L*(force_torque_d-force_torque);
-        %
+        
         
         %%
         %	IV) COMPUTING the EE DISPLACEMENT

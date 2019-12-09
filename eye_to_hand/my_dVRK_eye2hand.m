@@ -2,7 +2,7 @@
 %   INIT STUFF
 %%
 cd(fileparts(mfilename('fullpath')));
-clear all;
+clear;
 close all;
 clc;
 
@@ -38,6 +38,10 @@ ok=false;
 % end effector
 [~, h_EE]=vrep.simxGetObjectHandle(clientID, 'FollowedDummy', vrep.simx_opmode_blocking);
 
+% preallocating for speed
+h_L = zeros(4,5);
+h_L_EE = zeros(4,5);
+
 % landmarks
 for k=1:4
     for h=1:5
@@ -57,8 +61,8 @@ end
 %landmarks colors (old)
 %grays=[0.8; 0.6; 0.4; 0.2]*255;     %landmarks' gray shades
 
-%focal length (depth of the near clipping plane)
-fl=0.01;
+% focal length (depth of the near clipping plane)
+fl = 0.01;
 
 % control gain in mode 0 (see below)
 K = eye(6)*(10^-2);
@@ -67,7 +71,11 @@ K = eye(6)*(10^-2);
 H = eye(6)*(10^-1);
 
 % compliance matrix
-L = eye(6)*(10^-1);
+COMPLIANCE = eye(6)*(1);
+
+% preallocating for speed
+us_d = zeros(4,5);
+vs_d = zeros(4,5);
 
 % desired features
 for k=1:4
@@ -86,7 +94,7 @@ for k=1:4
 end
 
 % desired force and torque
-force_torque_d = [1 1 1 0 0 0]*10^-3;
+force_torque_d=zeros(6,1);
 
 % end effector home pose
 ee_pose_d=[ -1.5413e+0;   -4.0699e-2;    +7.2534e-1;  -1.80e+2;         0;         0];
@@ -98,7 +106,7 @@ ee_pose_d=[ -1.5413e+0;   -4.0699e-2;    +7.2534e-1;  -1.80e+2;         0;      
 % two possible control modes:
     % mode 0: go-to-home control mode; 
     % mode 1: visual servoing eye-on-hand control mode;
-mode=0
+mode=0;
 
 % mode 0 overview:
 	% i) features and depth extraction
@@ -115,9 +123,10 @@ mode=0
 
 %start from landmark h+1
 h=1-1;
-%
 
 % loop
+disp("------- STARTING -------");
+time = 0; % time costant useful for plot ecc.
 while h<6
     
     if mode==1
@@ -143,12 +152,14 @@ while h<6
             
         end
         
+        time = time +1;
+        
         
         %	II) BUILDING the IMAGE JACOBIAN and COMPUTING THE ERROR (vision-based only)
         %%
         
         %building the jacobian
-        J = [ build_point_jacobian(us(1),vs(1),zs(1),fl); ...
+        INTERACTION = [ build_point_jacobian(us(1),vs(1),zs(1),fl); ...
               build_point_jacobian(us(2),vs(2),zs(2),fl); ...
               build_point_jacobian(us(3),vs(3),zs(3),fl); ...
               build_point_jacobian(us(4),vs(4),zs(4),fl)]; 
@@ -171,8 +182,9 @@ while h<6
            if h==5
                break;
            end
-           mode=0
-           pause(1);
+           mode=0;
+           pause(2);
+           disp("---------- OK ----------");
            continue;
         end
         %
@@ -180,6 +192,7 @@ while h<6
         %%
         %	III) ADJUSTING the ERROR (via the force-based infos)
         %
+           
         while ~ok
             [~, ~, force, torque]=vrep.simxReadForceSensor(clientID, h_FS, vrep.simx_opmode_streaming);
             ok = true; %norm(force,2)~=0;
@@ -189,8 +202,18 @@ while h<6
         force_torque=[force'; torque'];
         force_torque=round(force_torque,2);
         %
-        err=err + J*L*(force_torque_d-force_torque);
-        %
+        force_correction = INTERACTION*COMPLIANCE*(force_torque_d-force_torque);
+        err=err + force_correction;
+        
+        time = time +1;
+        
+%         if mod(time,10)==0
+%             disp( norm(err));
+%         end
+        
+        if mod(time,10)==0 && norm(force_torque)~=0
+            disp(["force sensor: ",force_torque']);
+        end
         
         %%
         %	IV) COMPUTING the EE DISPLACEMENT
@@ -211,7 +234,7 @@ while h<6
         %
         
         %computing the displacement
-        ee_displacement = K*pinv(-J)*err;
+        ee_displacement = K*pinv(-INTERACTION)*err;
         if norm(ee_displacement,2)<10^-2.5 %10^-2.9
             ee_displacement = (ee_displacement/norm(ee_displacement,2))*10^-2.5;
         end
@@ -269,11 +292,12 @@ while h<6
         
         % evaluating exit condition
         if max(err)<=0.001
-           mode=1
+           mode=1;
            h=h+1;
            fprintf(1,'GOING TOWARD LANDMARK: %d \n',h);
            
            pause(1);
+           time = 0;
            continue;
         end
         %
@@ -291,6 +315,8 @@ while h<6
         
     pause(0.05);
 end
+
+disp("############ PROCESS ENDED ############");
 
 %%
 %	FUNCTIONS

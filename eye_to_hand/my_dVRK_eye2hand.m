@@ -10,20 +10,12 @@ pause(3);
 %%
 % CONNECTION TO VREP
 %%
-fprintf(1,'START...  \n');
-vrep=remApi('remoteApi'); % using the prototype file (remoteApiProto.m)
-vrep.simxFinish(-1); % just in case, close all opened connections
-clientID=vrep.simxStart('127.0.0.1',19999,true,true,5000,5);
-fprintf(1,'client %d\n', clientID);
-if (clientID > -1)
-	fprintf(1,'Connection: OK... \n');
-else
-	fprintf(2,'Connection: ERROR \n');
-	return;
-end
+
+[clientID,vrep] = init_connection();
+
 
 % For sync purposes (see below)
-ok=false; 
+sync = false; 
 
 %%
 % COLLECTING HANDLES
@@ -71,7 +63,7 @@ K = eye(6)*(10^-2);
 H = eye(6)*(10^-1);
 
 % compliance matrix
-COMPLIANCE = eye(6)*(1);
+COMPLIANCE = eye(6)*(10^-1);
 
 % preallocating for speed
 us_d = zeros(4,5);
@@ -81,11 +73,11 @@ vs_d = zeros(4,5);
 for k=1:4
     for h=1:5
         %
-        while ~ok
+        while ~sync
             [~, l_position]=vrep.simxGetObjectPosition(clientID, h_L(k,h), h_VS, vrep.simx_opmode_streaming);
-            ok = norm(l_position,2)~=0;
+            sync = norm(l_position,2)~=0;
         end
-        ok=false;
+        sync=false;
         %
         us_d(k,h)= fl*l_position(1)/l_position(3);
         vs_d(k,h)= fl*l_position(2)/l_position(3);
@@ -140,11 +132,11 @@ while h<6
         zs=zeros(4,1);
         for k=1:4
             %
-            while ~ok
+            while ~sync
                 [~, l_position]=vrep.simxGetObjectPosition(clientID, h_L_EE(k), h_VS, vrep.simx_opmode_streaming);
-                ok = norm(l_position,2)~=0;
+                sync = norm(l_position,2)~=0;
             end
-            ok=false;
+            sync=false;
             %
             zs(k)= l_position(3);
             us(k)= fl*l_position(1)/l_position(3);
@@ -193,11 +185,11 @@ while h<6
         %	III) ADJUSTING the ERROR (via the force-based infos)
         %
            
-        while ~ok
+        while ~sync
             [~, ~, force, torque]=vrep.simxReadForceSensor(clientID, h_FS, vrep.simx_opmode_streaming);
-            ok = true; %norm(force,2)~=0;
+            sync = true; %norm(force,2)~=0;
         end
-        ok=false;
+        sync=false;
         %
         force_torque=[force'; torque'];
         force_torque=round(force_torque,2);
@@ -220,17 +212,17 @@ while h<6
         %%
         
         %
-        while ~ok
+        while ~sync
             [~, abg]=vrep.simxGetObjectOrientation(clientID, h_VS, h_EE, vrep.simx_opmode_streaming);
-            ok = norm(abg,2)~=0;
+            sync = norm(abg,2)~=0;
         end
-        ok=false;
+        sync=false;
         %
-        while ~ok
+        while ~sync
             [~, tr]=vrep.simxGetObjectPosition(clientID, h_VS, h_EE, vrep.simx_opmode_streaming);
-            ok = norm(tr,2)~=0;
+            sync = norm(tr,2)~=0;
         end
-        ok=false;
+        sync=false;
         %
         
         %computing the displacement
@@ -246,17 +238,17 @@ while h<6
 
         % getting the current pose
         %
-        while ~ok
+        while ~sync
             [~, ee_position]=vrep.simxGetObjectPosition(clientID, h_EE, h_VS, vrep.simx_opmode_streaming);
-            ok = norm(ee_position,2)~=0;
+            sync = norm(ee_position,2)~=0;
         end
-        ok=false;
+        sync=false;
         %
-        while ~ok
+        while ~sync
             [~, ee_orientation]=vrep.simxGetObjectOrientation(clientID, h_EE, h_VS, vrep.simx_opmode_streaming);
-            ok = norm(ee_orientation,2)~=0;
+            sync = norm(ee_orientation,2)~=0;
         end
-        ok=false;
+        sync=false;
         %
         ee_pose= [ee_position, ee_orientation]'; 
         %
@@ -271,17 +263,17 @@ while h<6
         
         % getting the current pose
         %
-        while ~ok
+        while ~sync
             [~, ee_position]=vrep.simxGetObjectPosition(clientID, h_EE, -1, vrep.simx_opmode_streaming);
-            ok = norm(ee_position,2)~=0;
+            sync = norm(ee_position,2)~=0;
         end
-        ok=false;
+        sync=false;
         %
-        while ~ok
+        while ~sync
             [~, ee_orientation]=vrep.simxGetObjectOrientation(clientID, h_EE, -1, vrep.simx_opmode_streaming);
-            ok = norm(ee_orientation,2)~=0;
+            sync = norm(ee_orientation,2)~=0;
         end
-        ok=false;
+        sync=false;
         %
         ee_pose= [ee_position, ee_orientation]'; 
         %
@@ -321,6 +313,23 @@ disp("############ PROCESS ENDED ############");
 %%
 %	FUNCTIONS
 %%
+
+
+function [clientID,vrep] = init_connection()
+
+    fprintf(1,'START...  \n');
+    vrep=remApi('remoteApi'); % using the prototype file (remoteApiProto.m)
+    vrep.simxFinish(-1); % just in case, close all opened connections
+    clientID=vrep.simxStart('127.0.0.1',19999,true,true,5000,5);
+    fprintf(1,'client %d\n', clientID);
+    if (clientID > -1)
+        fprintf(1,'Connection: OK... \n');
+    else
+        fprintf(2,'Connection: ERROR \n');
+        return;
+    end
+end
+
 function [J] = build_point_jacobian(u,v,z,fl)
     J = [ -fl/z     0          u/z     (u*v)/fl        -(fl+(u^2)/fl)      v; ...
           0         -fl/z      v/z     (fl+(v^2)/fl)    -(u*v)/fl          -u];

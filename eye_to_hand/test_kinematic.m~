@@ -149,16 +149,15 @@ disp("############ PROCESS ENDED ############");
 disp("Disconnecting...");
 
 pause(5);
-vrep.simxStopSimulation(ID, vrep.simx_opmode_oneshot);
+% vrep.simxStopSimulation(ID, vrep.simx_opmode_oneshot);
 
 % check for inverse kinematics q = pinv( J(q) )*(p)
 
 % J(q)
-% [J] = kinematicsRCM.compute_jacobian(q1,q2,q3,q4,q5,q6);
-% Q = pinv(J)*ee_pose;
-% 
-% P = kinematicsRCM.ee_position(Q(1), Q(2), Q(3), Q(4), Q(5), Q(6) );
-% diff = (P - ee_pose(1:3));
+[J] = kinematicsRCM.compute_jacobian(q1,q2,q3,q4,q5,q6);
+[q1,q2,q3,q4,q5,q6] = pinv(J)*
+
+
 %%
 %	FUNCTIONS
 %%

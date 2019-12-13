@@ -1,0 +1,147 @@
+classdef kinematicsRCM
+    % from distributed/dVKinematics.cpp
+    properties
+        t = zeros(27); % data structure to save data
+        J = zeros(6,6); % jacobian
+    end
+    methods (Static)
+        function [x, y, z] = ee_position(q1, q2, q3, q4, q5, q6)
+            % computes position of EE wrt RCM given joints values
+            
+            t(2) = sin(q1);
+            t(3) = cos(q1);
+            t(4) = cos(q4);
+            t(5) = sin(q2);
+            t(6) = sin(q4);
+            t(7) = cos(q5);
+            t(8) = t(3)*t(6);
+            t(9) = t(2)*t(4)*t(5);
+            t(10) = t(8)+t(9);
+            t(11) = cos(q2);
+            t(12) = sin(q5);
+            t(25) = q3-1.56e-2;
+            t(26) = t(2)*t(6);
+            t(28) = t(3)*t(4)*t(5);
+            t(27) = t(26)-t(28);
+            
+            % computing coordinates
+            x = t(10) * t(12) * (-9.1e-3) + t(2) * t(7) * t(11) * 9.1e-3 + t(2) * t(11) * t(25);
+            y = - t(5) * t(7) * 9.1e-3 - t(5) * t(25) - t(4) * t(11) * t(12) * 9.1e-3;
+            z = t(12) * t(27) * (-9.1e-3)- t(3) * t(7) * t(11) * 9.1e-3 - t(3) * t(11) * t(25);
+        end
+        
+        function [J] = compute_jacobian(q1, q2, q3, q4, q5, q6)
+            % computes Jacobian of current configuration
+            
+            A = zeros(6,6);
+            
+            float t2 = cos(q1);
+            float t3 = cos(q4);
+            float t4 = sin(q1);
+            float t5 = sin(q2);
+            float t6 = sin(q4);
+            float t7 = sin(q5);
+            float t8 = t4*t6;
+            float t15 = t2*t3*t5;
+            float t9 = t8-t15;
+            float t10 = cos(q2);
+            float t11 = cos(q5);
+            float t12 = q3-1.56E-2;
+            float t13 = cos(q6);
+            float t14 = sin(q6);
+            float t16 = t7*t9*9.1E-3;
+            float t17 = t2*t10*t11*9.1E-3;
+            float t18 = t5*t11*9.1E-3;
+            float t19 = t3*t7*t10*9.1E-3;
+            float t20 = t7*t9;
+            float t21 = t2*t10*t11;
+            float t22 = t20+t21;
+            float t23 = t3*t4;
+            float t24 = t2*t5*t6;
+            float t25 = t23+t24;
+            float t35 = t13*t22;
+            float t36 = t14*t25;
+            float t26 = t35-t36;
+            float t27 = t5*t11;
+            float t28 = t3*t7*t10;
+            float t29 = t27+t28;
+            float t30 = t13*t29;
+            float t31 = t6*t10*t14;
+            float t32 = t30+t31;
+            float t33 = t18+t19;
+            float t34 = t16+t17;
+            float t37 = t2*t10*t12;
+            float t38 = t2*t6;
+            float t39 = t3*t4*t5;
+            float t40 = t38+t39;
+            float t41 = t4*t10*t11*9.1E-3;
+            float t42 = t7*t40;
+            float t49 = t4*t10*t11;
+            float t43 = t42-t49;
+            float t44 = t2*t3;
+            float t47 = t4*t5*t6;
+            float t45 = t44-t47;
+            float t50 = t13*t43;
+            float t51 = t14*t45;
+            float t46 = t50-t51;
+            float t54 = t7*t40*9.1E-3;
+            float t48 = t41-t54;
+            float t52 = t9*t11;
+            float t65 = t2*t7*t10;
+            float t53 = t52-t65;
+            float t55 = t4*t10*t12;
+            float t56 = t5*t12;
+            float t57 = t18+t19+t56;
+            float t58 = t5*t7;
+            float t64 = t3*t10*t11;
+            float t59 = t58-t64;
+            float t60 = t11*t40;
+            float t61 = t4*t7*t10;
+            float t62 = t60+t61;
+            float t63 = t4*t10;
+            
+            A(1,1) = t16+t17+t37+l*t26;
+            A(1,2) = -t4*t57-l*t4*t32;
+            A(1,3) = t63;
+            A(1,4) = t5*t34+l*t5*t26-t2*t10*t33-l*t2*t10*t32;
+            A(1,5) = -t25*t33-l*t25*t32-t6*t10*t34-l*t6*t10*t26;
+            A(1,6) = -l*t26*t59-l*t32*t53;
+            
+            A(2,1) = 0.0;
+            A(2,2) = -t4*(t41+t55-t7*t40*9.1E-3)-t2*(t16+t17+t37)-l*t2*t26+l*t4*t46;
+            A(2,3) = -t5;
+            A(2,4) = t4*t10*t34-t2*t10*t48+l*t4*t10*t26+l*t2*t10*t46;
+            A(2,5) = -t25*t48-t34*t45+l*t25*t46-l*t26*t45;
+            A(2,6) = -l*t26*t62+l*t46*t53;
+            
+            A(3,1) = t41-t54+t55-l*t46;
+            A(3,1) = t2*t57+l*t2*t32;
+            A(3,2) = -t2*t10;
+            A(3,3) = t5*(t41-t54)-l*t5*t46-t4*t10*t33-l*t4*t10*t32;
+            A(3,4) = t33*t45+l*t32*t45-t6*t10*t48+l*t6*t10*t46;
+            A(3,5) = l*t32*t62+l*t46*t59;
+            
+            A(3,0) = 0.0;
+            A(3,1) = -t2;
+            A(3,2) = 0.0;
+            A(3,3) = t63;
+            A(3,4) = -t44+t47;
+            A(3,5) = -t60-t61;
+            
+            A(4,0) = -1.0;
+            A(4,1) = 0.0;
+            A(4,2) = 0.0;
+            A(4,3) = -t5;
+            A(4,4) = t6*t10;
+            A(4,5) = t59;
+            
+            A(5,0) = 0.0;
+            A(5,1) = -t4;
+            A(5,2) = 0.0;
+            A(5,3) = -t2*t10;
+            A(5,4) = -t23-t24;
+            A(5,5) = -t52+t65;
+
+        end
+    end
+end

@@ -37,17 +37,16 @@ pause(3);
 [~, h_7sx] = vrep.simxGetObjectHandle(ID,'J3_sx_TOOL1',vrep.simx_opmode_blocking);
 [~, h_7dx] = vrep.simxGetObjectHandle(ID,'J3_dx_TOOL1',vrep.simx_opmode_blocking);
 
-[~, h_ecm] = vrep.simxGetObjectHandle(ID,'J4_ECM',vrep.simx_opmode_blocking);
+% reference for direct kin
+[~, h_RCM]=vrep.simxGetObjectHandle(ID, 'RCM_PSM1', vrep.simx_opmode_blocking);
 
 pause(0.1);
 
 % end effector home pose
 ee_pose_d=[ -1.5 ;   -4.07e-2;    +6.54e-1;  3.14;         0;         0];
-% ee_pose_d=[ 2 ;  2;    2;  2;         1;         0];
-
 
 % control gain
-H = eye(6)*10^-1;
+H = eye(6)*10^-2;
 
 % false if EE reach desired pose
 not_reached = true;
@@ -71,7 +70,7 @@ disp("------- STARTING -------");
 while not_reached && sync
     
     % get current simulation time
-    % time = vrep.simxGetLastCmdTime(ID) / 1000.0;
+    time = vrep.simxGetLastCmdTime(ID) / 1000.0;
     
     % getting the current pose
     [~, ee_position]=vrep.simxGetObjectPosition(ID, h_EE, -1, vrep.simx_opmode_buffer);
@@ -88,9 +87,7 @@ while not_reached && sync
     % getting current values of gripper
     [~, q7sx]=vrep.simxGetJointPosition(ID,h_7sx,vrep.simx_opmode_buffer);
     [~, q7dx]=vrep.simxGetJointPosition(ID,h_7dx,vrep.simx_opmode_buffer);
-    
-    [~, ecm]=vrep.simxGetJointPosition(ID,h_ecm,vrep.simx_opmode_buffer);
-    
+       
     %     if(mod(time,2)==0)
     %         disp(pos_j1_psm);
     %     end
@@ -108,23 +105,38 @@ while not_reached && sync
     
     [~]= vrep.simxSetObjectPosition(ID, h_EE, -1, ee_pose(1:3), vrep.simx_opmode_streaming);
     [~]= vrep.simxSetObjectOrientation(ID, h_EE, -1, ee_pose(4:6), vrep.simx_opmode_streaming);
-    % [~] = vrep.simxSetJointPosition(ID, h_ecm, -3.14, vrep.simx_opmode_streaming);   
-    
+   
     % evaluating exit condition
     if norm(err)<=10^-3
         disp("Position reached");
         not_reached = false;
         
-        compute_grasp(ID, h_7sx, h_7dx, q7sx, q7dx, vrep);
+        % compute_grasp(ID, h_7sx, h_7dx, q7sx, q7dx, vrep);
         % compute_square(ID, vrep, h_EE);
     end
     
-    % test on direct kinematics
-    [~, pos]=vrep.simxGetObjectPosition(ID, h_EE, -1, vrep.simx_opmode_buffer);    
-    z = compute_dirkin(q1,q2,q3,q4,q5,q6);   
-    % disp([ "ee_pose_vrep(z) ", pos(3); "direct(z) ", z]);
+    %     relativeToObjectHandle: indicates relative to which reference frame we want the position.
+    %                             Specify -1 to retrieve the absolute position, 
+    %                             vrep.sim_handle_parent to retrieve the position relative to the object's parent,
+    %                             or an object handle relative to whose
+    %                             reference frame you want the position.
     
+    relativeToObjectHandle = h_RCM;
     
+    if(mod(time,3)==0)
+        
+        [~, pos]=vrep.simxGetObjectPosition(ID, h_EE, relativeToObjectHandle, vrep.simx_opmode_streaming);
+        
+        [x,y,z] = forwardKinematicsRCM.ee_position(q1,q2,q3,q4,q5,q6);
+        
+%         disp([ "wrt h_RCM(z) ", pos  ]);
+%         disp("-");
+%         disp([ "dirkin ", [x,y,z] ]);
+        disp(pos(3) - z);
+        pause(0.1);
+        
+    end
+            
 end
 
 disp("############ PROCESS ENDED ############");
@@ -138,6 +150,7 @@ vrep.simxStopSimulation(ID, vrep.simx_opmode_oneshot);
 %	FUNCTIONS
 %%
 function [z] = compute_dirkin(q1, q2, q3, q4, q5, q6)
+% NOT USED ANYMORE -  SEE forwardkinematicsRCM.m
 
 % from distributed/dVKinematics.cpp
 t = zeros(4,4); % generic data structure to save data
@@ -153,6 +166,7 @@ z = t(1,2)*t(2,7)*(-9.1e-3) - cos(q1) * cos(q5) * t(1,1)*9.1e-3 - cos(q1)*t(1,1)
 end
 
 function [clientID,vrep] = init_connection()
+% used to build connection with vrep server
 
 fprintf(1,'START...  \n');
 vrep=remApi('remoteApi'); % using the prototype file (remoteApiProto.m)
@@ -167,7 +181,12 @@ else
 end
 end
 
-function [sync]  = syncronize(clientID , vrep, h_EE, h_j1_PSM, h_j2_PSM, h_j3_PSM, h_j1_TOOL, h_j2_TOOL, h_j3_TOOL, h_sx_GRIPPER, h_dx_GRIPPER)
+function [sync]  = syncronize(clientID , vrep, h_EE, h_j1_PSM, h_j2_PSM, h_j3_PSM, h_j1_TOOL, h_j2_TOOL, h_j3_TOOL, h_sx_GRIPPER, h_dx_GRIPPER, h_RCM)
+% to be prettyfied
+
+% used to wait to receive non zero values from vrep model
+% usually matlab and vrep need few seconds to send valid values
+
 sync = false;
 
 while ~sync
@@ -193,7 +212,7 @@ while ~sync
     
     [~,~] = vrep.simxGetJointPosition(clientID, h_sx_GRIPPER, vrep.simx_opmode_streaming);
     [~,~] = vrep.simxGetJointPosition(clientID, h_dx_GRIPPER, vrep.simx_opmode_streaming);
-    
+        
     [~,pos_j3_tool]=vrep.simxGetJointPosition(clientID,h_j3_TOOL,vrep.simx_opmode_streaming);
     
     sync = norm(pos_j3_tool,2)~=0;
@@ -201,6 +220,8 @@ while ~sync
 end
 end
 function [] = compute_square(ID, vrep, h_EE)
+
+% this function let ee compute a square
 
 r = 0.005;
 [~, ee_position]=vrep.simxGetObjectPosition(ID, h_EE, -1, vrep.simx_opmode_buffer);
@@ -266,7 +287,8 @@ end
 
 end
 function [] = compute_grasp(clientID, h_7sx, h_7dx, pos_gripper_sx, pos_gripper_dx, vrep)
-% to complete
+
+% this function computes a grasp (only image rendering)
 
 sx = vrep.simxGetJointPosition(clientID,h_7sx,vrep.simx_opmode_streaming);
 dx = vrep.simxGetJointPosition(clientID,h_7dx,vrep.simx_opmode_streaming);

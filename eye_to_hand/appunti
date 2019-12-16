@@ -1,0 +1,23 @@
+1) 	Sono riuscito a sbloccare il movimento del terzo giunto rimuovendo il link dummy-dummy.
+
+2)	 La posizione dell EE letta wrt RCM 
+	[~, ee_position]=vrep.simxGetObjectPosition(ID, h_j6, relativeToObjectHandle, 			vrep.simx_opmode_streaming);
+
+	è molto simile a quella che si ottiene facendo la direct kinematics 
+	    pose_direct = kinematicsRCM.ee_position(Q);
+
+	la differenza dei valori è di 0.4 al massimo. QUINDI simxGetObjectPosition PUO' ESSERE 		USATO PER LEGGERE QUESTO VALORE
+
+3) 	ora che ho capito come governare tutti i giunti devo vedere se ciò che ho appreso 
+	è compatibile con lo script che abbiamo ricevuto. Perchè nei test fatti fino ad ora io
+	ottengo una posizione decisa da me da raggiungere usando la inverse kin. Ma nello script la
+	posizione o velocità è decisa dalla telecamera. 
+	
+	infatti la nuova posizione da raggiungere nello script iniziale è data wrt h_VS ossia l' 		ECM. 
+	
+	to-do: APPLICARE INVERSE KIN WRT h_VS
+
+4)	questa inverse kin funziona anche con valori di velocità?
+	 
+
+

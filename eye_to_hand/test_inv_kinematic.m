@@ -102,31 +102,32 @@ while not_reached && sync
     % computing the error
     err=[ee_pose_d(1:3) - ee_pose(1:3); angdiff(ee_pose(4:6), ee_pose_d(4:6))];
        
-    % computing gradient method for inverse kinematics
-    J = kinematicsRCM.compute_jacobian(q1,q2,q3,q4,q5,q6);
-    J = pinv(J);
     
-    v = [1 1 1 0.4 0.4 0.4]*10^-1;
-    alfa = diag(v);
+    Q = kinematicsRCM.inverse_kinematics(Q,err);
     
-    Q_new = Q' + alfa*J*(err);
+    [~] = vrep.simxSetJointPosition(ID, h_j1, Q(1), vrep.simx_opmode_streaming);
+    [~] = vrep.simxSetJointPosition(ID, h_j2, Q(2), vrep.simx_opmode_streaming);
+    [~] = vrep.simxSetJointPosition(ID, h_j3, Q(3), vrep.simx_opmode_streaming);
+    [~] = vrep.simxSetJointPosition(ID, h_j4, Q(4), vrep.simx_opmode_streaming);
+    [~] = vrep.simxSetJointPosition(ID, h_j5, Q(5), vrep.simx_opmode_streaming);
+    [~] = vrep.simxSetJointPosition(ID, h_j6, Q(6), vrep.simx_opmode_streaming);
     
-    [~] = vrep.simxSetJointPosition(ID, h_j1, Q_new(1), vrep.simx_opmode_streaming);
-    [~] = vrep.simxSetJointPosition(ID, h_j2, Q_new(2), vrep.simx_opmode_streaming);
-    [~] = vrep.simxSetJointPosition(ID, h_j3, Q_new(3), vrep.simx_opmode_streaming);
-    [~] = vrep.simxSetJointPosition(ID, h_j4, Q_new(4), vrep.simx_opmode_streaming);
-    [~] = vrep.simxSetJointPosition(ID, h_j5, Q_new(5), vrep.simx_opmode_streaming);
-    [~] = vrep.simxSetJointPosition(ID, h_j6, Q_new(6), vrep.simx_opmode_streaming);
     pause(0.2);
     
     % evaluating exit condition
-    if norm(err,2)<= 0.015
+    if norm(err,2)<= 0.02
         disp("Position reached");
         not_reached = false;       
     end
     
-    plot(
-    disp( ["err ", norm(err,2) ]);
+    x = time;
+    y = norm(err,2);
+    % plot(x,y,'--b');
+    stem(x,y,'-b');
+    hold on
+    grid on
+    ylim( [0 0.5]);
+    title('Plot of error')   
   
 end
 
@@ -299,11 +300,6 @@ while sx > 0
     dx = dx - 0.02;
     pause(0.05);
 end
-
-end
-function [J] = build_point_jacobian(u,v,z,fl)
-J = [ -fl/z     0          u/z     (u*v)/fl        -(fl+(u^2)/fl)      v; ...
-    0         -fl/z      v/z     (fl+(v^2)/fl)    -(u*v)/fl          -u];
 
 end
 

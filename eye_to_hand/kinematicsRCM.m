@@ -5,9 +5,13 @@ classdef kinematicsRCM
         J = zeros(6,6); % jacobian
     end
     methods (Static)
-        function [x, y, z] = ee_position(q1, q2, q3, q4, q5, q6)
+        function [pos] = direct_kinematics(Q)
+            
             % computes position of EE wrt RCM given joints values
+            % output is 3x1 vector
                        
+            q1 = Q(1); q2 = Q(2); q3 = Q(3); q4 = Q(4); q5 = Q(5); q6 = Q(6);
+             
             t(2) = sin(q1);
             t(3) = cos(q1);
             t(4) = cos(q4);
@@ -28,10 +32,30 @@ classdef kinematicsRCM
             x = t(10) * t(12) * (-9.1e-3) + t(2) * t(7) * t(11) * 9.1e-3 + t(2) * t(11) * t(25);
             y = - t(5) * t(7) * 9.1e-3 - t(5) * t(25) - t(4) * t(11) * t(12) * 9.1e-3;
             z = t(12) * t(27) * (-9.1e-3)- t(3) * t(7) * t(11) * 9.1e-3 - t(3) * t(11) * t(25);
+            
+            pos = [x,y,z]';
         end
         
-        function [J] = compute_jacobian(q1, q2, q3, q4, q5, q6)
+        function [Q] = inverse_kinematics(Q, err)
+            
+            % given error and current configuration returns next
+            % configuration to converge to desired position -> err=0
+            
+            J = kinematicsRCM.compute_jacobian(Q);
+            J = pinv(J);
+            v = [1 1 1 0.4 0.4 0.4]*10^-1;
+            alfa = diag(v);
+            
+            % computing gradient method for inverse kinematics
+            Q = Q' + alfa*J*(err);
+        end
+        
+        function [J] = compute_jacobian(Q)
+
             % computes Jacobian of current configuration
+            % formula of Jacobian has been taken from distributed/dVKinematics.cpp
+            
+            q1 = Q(1); q2 = Q(2); q3 = Q(3); q4 = Q(4); q5 = Q(5); q6 = Q(6);
             l = 0;
             J = zeros(6,6);
             

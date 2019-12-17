@@ -11,7 +11,7 @@ pause(3);
 % CONNECTION TO VREP
 %%
 
-[ID,vrep] = init_connection();
+[clientID,vrep] = init_connection();
 
 
 % For sync purposes (see below)
@@ -22,45 +22,23 @@ sync = false;
 %%
 
 % vision sensor
-[~, h_VS]=vrep.simxGetObjectHandle(ID, 'Vision_sensor_ECM', vrep.simx_opmode_blocking);
+[~, h_VS]=vrep.simxGetObjectHandle(clientID, 'Vision_sensor_ECM', vrep.simx_opmode_blocking);
 
 % force sensor
-[~, h_FS]=vrep.simxGetObjectHandle(ID, 'Force_sensor', vrep.simx_opmode_blocking);
+[~, h_FS]=vrep.simxGetObjectHandle(clientID, 'Force_sensor', vrep.simx_opmode_blocking);
 
 % end effector
-[~, h_EE]=vrep.simxGetObjectHandle(ID, 'FollowedDummy', vrep.simx_opmode_blocking);
+[~, h_EE]=vrep.simxGetObjectHandle(clientID, 'FollowedDummy', vrep.simx_opmode_blocking);
 
 
 % here you have to insert handles of RCM and h_j6 (maybe) to get desired
 % pose in relative frame (not absolute -1)
 
-
-
 % reference for direct kin
-% first RRP joints
-[~, h_j1] = vrep.simxGetObjectHandle(ID,'J1_PSM1',vrep.simx_opmode_blocking);
-[~, h_j2] = vrep.simxGetObjectHandle(ID,'J2_PSM1',vrep.simx_opmode_blocking);
-[~, h_j3] = vrep.simxGetObjectHandle(ID,'J3_PSM1',vrep.simx_opmode_blocking);
-
-% second RRR joints
-[~, h_j4] = vrep.simxGetObjectHandle(ID,'J1_TOOL1',vrep.simx_opmode_blocking);
-[~, h_j5] = vrep.simxGetObjectHandle(ID,'J2_TOOL1',vrep.simx_opmode_blocking);
+[~, h_RCM] = vrep.simxGetObjectHandle(ID, 'RCM_PSM1', vrep.simx_opmode_blocking);
 [~, h_j6] = vrep.simxGetObjectHandle(ID,'J3_TOOL1',vrep.simx_opmode_blocking);
+relativeToObjectHandle = h_RCM;
 
-% grippers
-[~, h_7sx] = vrep.simxGetObjectHandle(ID,'J3_sx_TOOL1',vrep.simx_opmode_blocking);
-[~, h_7dx] = vrep.simxGetObjectHandle(ID,'J3_dx_TOOL1',vrep.simx_opmode_blocking);
-
-% reference for direct kin
-[~, h_RCM]=vrep.simxGetObjectHandle(ID, 'RCM_PSM1', vrep.simx_opmode_blocking);
-
-relativeToObjectHandle = h_RCM; % relative to which frame you want to know position of ee
-
-[sync] = syncronize( ID , vrep, h_j1, h_j2, h_j3, h_j4, h_j5, h_j6, h_7sx, h_7dx, h_RCM);
-if sync
-    disp("Syncronized.");
-    pause(1);
-end
 
 
 % preallocating for speed
@@ -73,13 +51,13 @@ h_L_EE = zeros(4,5); % here i save handles of balls attacched to EE
 
 for b=1:4 % each spot has 4 balls
     for s=1:5 % 5 total spots
-        [~, h_L(b,s)]=vrep.simxGetObjectHandle(ID, ['Landmark', num2str(s), num2str(b)], vrep.simx_opmode_blocking);
+        [~, h_L(b,s)]=vrep.simxGetObjectHandle(clientID, ['Landmark', num2str(s), num2str(b)], vrep.simx_opmode_blocking);
     end
 end
 
 % landmarks attached to EE -> 'LandmarkEE1,2,3,4'
 for b=1:4
-    [~, h_L_EE(b)]=vrep.simxGetObjectHandle(ID, ['LandmarkEE', num2str(b)], vrep.simx_opmode_blocking);
+    [~, h_L_EE(b)]=vrep.simxGetObjectHandle(clientID, ['LandmarkEE', num2str(b)], vrep.simx_opmode_blocking);
 end
 
 %%
@@ -104,13 +82,12 @@ COMPLIANCE = eye(6)*(10^-1);
 % preallocating for speed
 us_desired = zeros(4,5);
 vs_desired = zeros(4,5);
-sync=false;
 
 % desired features EXTRACTION
 for b=1:4 % balls
     for s=1:5 % spots
         while ~sync % until i dont get valid values
-            [~, l_position]=vrep.simxGetObjectPosition(ID, h_L(b,s), h_VS, vrep.simx_opmode_streaming);
+            [~, l_position]=vrep.simxGetObjectPosition(clientID, h_L(b,s), h_VS, vrep.simx_opmode_streaming);
             sync = norm(l_position,2)~=0;
         end
         sync=false;
@@ -127,7 +104,6 @@ force_torque_d=zeros(6,1);
 
 % end effector home pose (THIS NEEDS TO BE CORRECTED)
 ee_pose_d=[ -1.5413e+0;   -4.0699e-2;    +7.2534e-1;  -1.80e+2;         0;         0];
-home_pose = [ 0.09 0.035 -0.0938 -1.458 -0.586 0.7929]; % this is the one wrt rcm (used for inverse kin);
 
 %%
 %	PROCESS LOOP
@@ -172,7 +148,7 @@ while h<6
         % GETTING CURRECT POSITION OF EE IN IMAGE PLANE
         for b=1:4 % balls
             while ~sync  % until i dont get valid values
-                [~, l_position]=vrep.simxGetObjectPosition(ID, h_L_EE(b), h_VS, vrep.simx_opmode_streaming);
+                [~, l_position]=vrep.simxGetObjectPosition(clientID, h_L_EE(b), h_VS, vrep.simx_opmode_streaming);
                 sync = norm(l_position,2)~=0;
             end
             sync=false;
@@ -225,7 +201,7 @@ while h<6
         %
            
         while ~sync
-            [~, ~, force, torque]=vrep.simxReadForceSensor(ID, h_FS, vrep.simx_opmode_streaming);
+            [~, ~, force, torque]=vrep.simxReadForceSensor(clientID, h_FS, vrep.simx_opmode_streaming);
             sync = true; %norm(force,2)~=0;
         end
         sync=false;
@@ -254,14 +230,14 @@ while h<6
         
         % THIS NEEDS TO BE FIXED sostituire h_EE con h_j6?
         while ~sync
-            [~, abg]=vrep.simxGetObjectOrientation(ID, h_VS, h_EE, vrep.simx_opmode_streaming);
+            [~, abg]=vrep.simxGetObjectOrientation(clientID, h_VS, h_EE, vrep.simx_opmode_streaming);
             sync = norm(abg,2)~=0;
         end
         sync=false;
         
         % THIS NEEDS TO BE FIXED
         while ~sync
-            [~, tr]=vrep.simxGetObjectPosition(ID, h_VS, h_EE, vrep.simx_opmode_streaming);
+            [~, tr]=vrep.simxGetObjectPosition(clientID, h_VS, h_EE, vrep.simx_opmode_streaming);
             sync = norm(tr,2)~=0;
         end
         sync=false;
@@ -281,13 +257,13 @@ while h<6
         % getting the current pose
         
         while ~sync
-            [~, ee_position]=vrep.simxGetObjectPosition(ID, h_EE, h_VS, vrep.simx_opmode_streaming);
+            [~, ee_position]=vrep.simxGetObjectPosition(clientID, h_EE, h_VS, vrep.simx_opmode_streaming);
             sync = norm(ee_position,2)~=0;
         end
         sync=false;
         
         while ~sync
-            [~, ee_orientation]=vrep.simxGetObjectOrientation(ID, h_EE, h_VS, vrep.simx_opmode_streaming);
+            [~, ee_orientation]=vrep.simxGetObjectOrientation(clientID, h_EE, h_VS, vrep.simx_opmode_streaming);
             sync = norm(ee_orientation,2)~=0;
         end
         sync=false;
@@ -297,14 +273,11 @@ while h<6
         
         % updating the pose
         ee_pose= ee_pose + ee_displacement;
-        [~]= vrep.simxSetObjectPosition(ID, h_EE, h_VS, ee_pose(1:3), vrep.simx_opmode_oneshot);
-        [~]= vrep.simxSetObjectOrientation(ID, h_EE, h_VS, ee_pose(4:6), vrep.simx_opmode_oneshot);
+        [~]= vrep.simxSetObjectPosition(clientID, h_EE, h_VS, ee_pose(1:3), vrep.simx_opmode_oneshot);
+        [~]= vrep.simxSetObjectOrientation(clientID, h_EE, h_VS, ee_pose(4:6), vrep.simx_opmode_oneshot);
         
         
     elseif mode==0
-        
-        % INSERT HERE GO TO HOME SCRIPT
-        
         
         % once inverse kinematics is done you can subs all this with inverse_kin
         while ~sync
@@ -314,18 +287,17 @@ while h<6
             [~, ee_orientation_relative]=vrep.simxGetObjectOrientation(ID, h_j6, relativeToObjectHandle, vrep.simx_opmode_streaming);
             sync = norm(ee_position_relative,2)~=0;
         end
-        ee_pose_relative = [ee_position_relative,ee_orientation_relative];
         sync=false;
         % getting the current pose
         
         while ~sync
-            [~, ee_position]=vrep.simxGetObjectPosition(ID, h_EE, -1, vrep.simx_opmode_streaming);
+            [~, ee_position]=vrep.simxGetObjectPosition(clientID, h_EE, -1, vrep.simx_opmode_streaming);
             sync = norm(ee_position,2)~=0;
         end
         sync=false;
         %
         while ~sync
-            [~, ee_orientation]=vrep.simxGetObjectOrientation(ID, h_EE, -1, vrep.simx_opmode_streaming);
+            [~, ee_orientation]=vrep.simxGetObjectOrientation(clientID, h_EE, -1, vrep.simx_opmode_streaming);
             sync = norm(ee_orientation,2)~=0;
         end
         sync=false;
@@ -343,9 +315,6 @@ while h<6
            h=h+1;
            fprintf(1,'GOING TOWARD LANDMARK: %d \n',h);
            
-           disp("this is home pose of h_j6 wrt h_rcm");
-           disp(ee_pose_relative);
-           pause();
            
            pause(1);
            time = 0;
@@ -359,8 +328,8 @@ while h<6
 
         %updating the pose
         ee_pose= ee_pose + ee_displacement;
-        [~]= vrep.simxSetObjectPosition(ID, h_EE, -1, ee_pose(1:3), vrep.simx_opmode_oneshot);
-        [~]= vrep.simxSetObjectOrientation(ID, h_EE, -1, ee_pose(4:6), vrep.simx_opmode_oneshot);
+        [~]= vrep.simxSetObjectPosition(clientID, h_EE, -1, ee_pose(1:3), vrep.simx_opmode_oneshot);
+        [~]= vrep.simxSetObjectOrientation(clientID, h_EE, -1, ee_pose(4:6), vrep.simx_opmode_oneshot);
         %   
     end
         
@@ -387,36 +356,6 @@ function [clientID,vrep] = init_connection()
         fprintf(2,'Connection: ERROR \n');
         return;
     end
-end
-
-function [sync]  = syncronize(clientID , vrep, h_j1, h_j2, h_j3, h_j4, h_j5, h_j6, h_7sx, h_7dx, h_RCM)
-% to be prettyfied -> you will receive in input just (clientID , vrep, handles)
-% h_EE = handles(1)
-% h_j1_PSM = handles(2)
-% ...
-
-% used to wait to receive non zero values from vrep model
-% usually matlab and vrep need few seconds to send valid values
-
-sync = false;
-
-while ~sync
-    % i dont need them all, just one to check non-zero returning values 
-    [~,~] = vrep.simxGetJointPosition(clientID, h_j1, vrep.simx_opmode_streaming);
-    [~,~] = vrep.simxGetJointPosition(clientID, h_j2, vrep.simx_opmode_streaming);
-    [~,~] = vrep.simxGetJointPosition(clientID, h_j3, vrep.simx_opmode_streaming);
-    [~,~] = vrep.simxGetJointPosition(clientID, h_j4, vrep.simx_opmode_streaming);
-    [~,~] = vrep.simxGetJointPosition(clientID, h_j5, vrep.simx_opmode_streaming);
-    [~,some]=vrep.simxGetJointPosition(clientID,h_j6,vrep.simx_opmode_streaming);
-       
-    [~,~] = vrep.simxGetJointPosition(clientID, h_7sx, vrep.simx_opmode_streaming);
-    [~,~] = vrep.simxGetJointPosition(clientID, h_7dx, vrep.simx_opmode_streaming);
-     
-    [~,~] = vrep.simxGetJointPosition(clientID, h_RCM, vrep.simx_opmode_streaming);
-
-    sync = norm(some,2)~=0;
-end
-
 end
 
 function [J] = build_point_jacobian(u,v,z,fl)

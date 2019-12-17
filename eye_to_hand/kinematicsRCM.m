@@ -33,6 +33,8 @@ classdef kinematicsRCM
             y = - t(5) * t(7) * 9.1e-3 - t(5) * t(25) - t(4) * t(11) * t(12) * 9.1e-3;
             z = t(12) * t(27) * (-9.1e-3)- t(3) * t(7) * t(11) * 9.1e-3 - t(3) * t(11) * t(25);
             
+            % do i need [roll, pitch, yaw]?
+            
             pos = [x,y,z]';
         end
         
@@ -43,7 +45,7 @@ classdef kinematicsRCM
             
             J = kinematicsRCM.compute_jacobian(Q);
             J = pinv(J);
-            v = [1 1 1 0.4 0.4 0.4]*10^-1;
+            v = [1 1 1 0.4 0.4 0.4]*10^-1; % we're correcting more the position that orientation (-60%)
             alfa = diag(v);
             
             % computing gradient method for inverse kinematics

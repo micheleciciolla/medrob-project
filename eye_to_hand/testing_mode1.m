@@ -1,3 +1,5 @@
+% testing mode 1 
+
 %%
 %   INIT STUFF
 %%
@@ -22,9 +24,6 @@ pause(3);
 
 % force sensor
 [~, h_FS]=vrep.simxGetObjectHandle(ID, 'Force_sensor', vrep.simx_opmode_blocking);
-
-% end effector
-[~, h_EE]=vrep.simxGetObjectHandle(ID, 'FollowedDummy', vrep.simx_opmode_blocking);
 
 % reference for direct kin
 % first RRP joints
@@ -89,7 +88,7 @@ K = eye(6)*(10^-2);
 H = eye(6)*(10^-1);
 
 % compliance matrix of manipulator
-COMPLIANCE = eye(6)*(10^-1);
+C = eye(6)*(10^-1);
 
 % preallocating for speed
 us_desired = zeros(4,5);
@@ -126,7 +125,7 @@ home_pose = [ 0.09 0.035 -0.0938 -1.458 -0.586 0.7929]; % this is the one wrt rc
 % two possible control modes:
     % mode 0: go-to-home control mode; 
     % mode 1: visual servoing eye-on-hand control mode;
-mode=0;
+mode=1;
 
 % mode 0 overview:
 	% i) features and depth extraction
@@ -142,13 +141,23 @@ mode=0;
 % mode 1 is just a Cartesian proportionale regulator
 
 %start from landmark at spot+1
-spot = 0;
+spot = 1;
 
 % loop
 disp("------- STARTING -------");
-time = 0; % time costant useful for plot ecc.
 while spot<6
-    
+        
+    time = vrep.simxGetLastCmdTime(ID) / 1000.0;
+
+    % getting current values of joints
+    [~, q1]=vrep.simxGetJointPosition(ID,h_j1,vrep.simx_opmode_buffer);
+    [~, q2]=vrep.simxGetJointPosition(ID,h_j2,vrep.simx_opmode_buffer);
+    [~, q3]=vrep.simxGetJointPosition(ID,h_j3,vrep.simx_opmode_buffer);
+    [~, q4]=vrep.simxGetJointPosition(ID,h_j4,vrep.simx_opmode_buffer);
+    [~, q5]=vrep.simxGetJointPosition(ID,h_j5,vrep.simx_opmode_buffer);
+    [~, q6]=vrep.simxGetJointPosition(ID,h_j6,vrep.simx_opmode_buffer);    
+    Q = [q1,q2,q3,q4,q5,q6]; 
+       
     if mode==1
         
         %%
@@ -172,15 +181,13 @@ while spot<6
             vs_currect(b)= fl*l_position(2)/l_position(3);
             
         end
-        
-        time = time +1;
-        
+               
         %%
         %	II) BUILDING the IMAGE JACOBIAN and COMPUTING THE ERROR (vision-based only)
         %%
         
         % building the jacobian
-        INTERACTION = [ build_point_jacobian(us_current(1),vs_currect(1),zs_current(1),fl); ...
+        L = [ build_point_jacobian(us_current(1),vs_currect(1),zs_current(1),fl); ...
               build_point_jacobian(us_current(2),vs_currect(2),zs_current(2),fl); ...
               build_point_jacobian(us_current(3),vs_currect(3),zs_current(3),fl); ...
               build_point_jacobian(us_current(4),vs_currect(4),zs_current(4),fl)]; 
@@ -205,7 +212,7 @@ while spot<6
            end
            mode=0;
            pause(2);
-           disp("---------- OK ----------");
+           fprintf(1, 'REACHED SPOT : %d \n', spot);
            continue;
         end
         %
@@ -219,45 +226,33 @@ while spot<6
             sync = true; %norm(force,2)~=0;
         end
         sync=false;
-        %
+        
         force_torque=[force'; torque'];
         force_torque=round(force_torque,2);
-        %
-        force_correction = INTERACTION*COMPLIANCE*(force_torque_d-force_torque);
+        
+        force_correction = L*C*(force_torque_d-force_torque);
         err = err + force_correction;
-        
-        time = time +1;
-        
-%         if mod(time,10)==0
-%             disp( norm(err));
-%         end
-        
-        if mod(time,10)==0 && norm(force_torque)~=0
-            disp(["force sensor: ",force_torque']);
-        end
-        
+                              
         %%
         %	IV) COMPUTING the EE DISPLACEMENT
         %%
-        
-           
-        
+                  
         % THIS NEEDS TO BE FIXED sostituire h_EE con h_j6?
         while ~sync
-            [~, abg]=vrep.simxGetObjectOrientation(ID, h_VS, h_EE, vrep.simx_opmode_streaming);
+            [~, abg]=vrep.simxGetObjectOrientation(ID, h_VS, h_j6, vrep.simx_opmode_streaming);
             sync = norm(abg,2)~=0;
         end
         sync=false;
         
         % THIS NEEDS TO BE FIXED
         while ~sync
-            [~, tr]=vrep.simxGetObjectPosition(ID, h_VS, h_EE, vrep.simx_opmode_streaming);
+            [~, tr]=vrep.simxGetObjectPosition(ID, h_VS, h_j6, vrep.simx_opmode_streaming);
             sync = norm(tr,2)~=0;
         end
         sync=false;
                 
         % computing the displacement
-        ee_displacement = K*pinv(-INTERACTION)*err;
+        ee_displacement = K*pinv(-L)*err;
         
         if norm(ee_displacement,2)<10^-2.5 %10^-2.9
             ee_displacement = (ee_displacement/norm(ee_displacement,2))*10^-2.5;
@@ -271,82 +266,46 @@ while spot<6
         % getting the current pose
         
         while ~sync
-            [~, ee_position]=vrep.simxGetObjectPosition(ID, h_EE, h_VS, vrep.simx_opmode_streaming);
+            [~, ee_position]=vrep.simxGetObjectPosition(ID, h_j6, h_VS, vrep.simx_opmode_streaming);
             sync = norm(ee_position,2)~=0;
         end
         sync=false;
         
         while ~sync
-            [~, ee_orientation]=vrep.simxGetObjectOrientation(ID, h_EE, h_VS, vrep.simx_opmode_streaming);
+            [~, ee_orientation]=vrep.simxGetObjectOrientation(ID, h_j6, h_VS, vrep.simx_opmode_streaming);
             sync = norm(ee_orientation,2)~=0;
         end
         sync=false;
         
         ee_pose= [ee_position, ee_orientation]'; 
-        
-        
+             
         % updating the pose
-        ee_pose= ee_pose + ee_displacement;
-        [~]= vrep.simxSetObjectPosition(ID, h_EE, h_VS, ee_pose(1:3), vrep.simx_opmode_oneshot);
-        [~]= vrep.simxSetObjectOrientation(ID, h_EE, h_VS, ee_pose(4:6), vrep.simx_opmode_oneshot);
+        next_ee_pose= ee_pose + ee_displacement;
+        
+        % qui serve una specie di metodo GO_THERE
+        
+        error = ee_pose - next_ee_pose;
         
         
-    elseif mode==0
+        % 4) CORRECT AND UPDATE POSE
         
-        % INSERT HERE GO TO HOME SCRIPT (copia ed incolla quando l' hai
-        % completato nell' altro script
+        % computing new configuration via inverse inverse kinematics
+        Q = kinematicsRCM.inverse_kinematics(Q,error);
         
-        % once inverse kinematics is done you can subs all this with inverse_kin
-        % relativeToObjectHandle = h_RCM defined upward
-        [~, ee_position_relative]=vrep.simxGetObjectPosition(ID, h_j6, relativeToObjectHandle, vrep.simx_opmode_streaming);
-        [~, ee_orientation_relative]=vrep.simxGetObjectOrientation(ID, h_j6, relativeToObjectHandle, vrep.simx_opmode_streaming);
-        ee_pose_relative = [ee_position_relative,ee_orientation_relative];
-        sync=false;
-        % getting the current pose
+        % sending to joints
+        [~] = vrep.simxSetJointPosition(ID, h_j1, Q(1), vrep.simx_opmode_streaming);
+        [~] = vrep.simxSetJointPosition(ID, h_j2, Q(2), vrep.simx_opmode_streaming);
+        [~] = vrep.simxSetJointPosition(ID, h_j3, Q(3), vrep.simx_opmode_streaming);
+        [~] = vrep.simxSetJointPosition(ID, h_j4, Q(4), vrep.simx_opmode_streaming);
+        [~] = vrep.simxSetJointPosition(ID, h_j5, Q(5), vrep.simx_opmode_streaming);
+        [~] = vrep.simxSetJointPosition(ID, h_j6, Q(6), vrep.simx_opmode_streaming);
+        pause(0.2);       
         
-        while ~sync
-            [~, ee_position]=vrep.simxGetObjectPosition(ID, h_EE, -1, vrep.simx_opmode_streaming);
-            sync = norm(ee_position,2)~=0;
-        end
-        sync=false;
-        %
-        while ~sync
-            [~, ee_orientation]=vrep.simxGetObjectOrientation(ID, h_EE, -1, vrep.simx_opmode_streaming);
-            sync = norm(ee_orientation,2)~=0;
-        end
-        sync=false;
-        %
-        ee_pose= [ee_position, ee_orientation]'; 
-        %
+    elseif mode == 0
         
-        %computing the error
-        err=[ee_pose_d(1:3) - ee_pose(1:3); angdiff(ee_pose(4:6), ee_pose_d(4:6)) ];
-        %
+        % see testing_mode0.m
+        break
         
-        % evaluating exit condition
-        if max(err)<=0.001
-           mode=1;
-           spot=spot+1;
-           fprintf(1,'GOING TOWARD LANDMARK: %d \n',spot);
-           
-           disp("this is home pose of h_j6 wrt h_rcm");
-           disp(ee_pose_relative);
-           
-           pause(1);
-           time = 0;
-           continue;
-        end
-        %
-        
-        %computing the displacement
-        ee_displacement = H*err;
-        %
-
-        %updating the pose
-        ee_pose= ee_pose + ee_displacement;
-        [~]= vrep.simxSetObjectPosition(ID, h_EE, -1, ee_pose(1:3), vrep.simx_opmode_oneshot);
-        [~]= vrep.simxSetObjectOrientation(ID, h_EE, -1, ee_pose(4:6), vrep.simx_opmode_oneshot);
-        %   
     end
         
     pause(0.05);
@@ -411,39 +370,4 @@ function [J] = build_point_jacobian(u,v,z,fl)
     J = [ -fl/z     0          u/z     (u*v)/fl        -(fl+(u^2)/fl)      v; ...
           0         -fl/z      v/z     (fl+(v^2)/fl)    -(u*v)/fl          -u];
 
-end
-
-%%
-%	OLD
-%%
-
-%{    
-    %getting the features
-    if ~isempty(image)
-        fs=extract_features(image, grays);
-    end
-%}
-
-function [fs] = extract_features(image, grays)
-    %
-    fs=zeros(4,1);
-    %
-    rimage=image(:,:,1);
-    gimage=image(:,:,2);
-    bimage=image(:,:,3);
-    %
-    for k=1:4
-        %
-        raw = (rimage==grays(k) & gimage==grays(k) & bimage==grays(k));
-        %
-        [J,I]=ind2sub(size(image),find(raw));
-        %
-        jmin=min(J);
-        jmax=max(J);
-        imin=min(I);
-        imax=max(I);
-        %
-        fs(k,[1, 2])=[jmin+(jmax-jmin)/2, imin+(imax-imin)/2]; 
-        %
-    end
 end

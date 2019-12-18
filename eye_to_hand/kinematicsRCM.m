@@ -45,7 +45,7 @@ classdef kinematicsRCM
             
             J = kinematicsRCM.compute_jacobian(Q);
             J = pinv(J);
-            v = [1 1 1 0.4 0.4 0.4]*10^-1; % we're correcting more the position that orientation (-60%)
+            v = [1 1 1 0.4 0.4 0.4];%*10^-1; % we're correcting more the position that orientation (-60%)
             alfa = diag(v);
             
             % computing gradient method for inverse kinematics

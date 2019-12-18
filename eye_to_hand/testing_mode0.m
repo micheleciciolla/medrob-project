@@ -17,10 +17,6 @@ pause(3);
 
 [ID,vrep] = init_connection();
 
-
-% For sync purposes (see below)
-sync = false; 
-
 %%
 % COLLECTING HANDLES
 %%
@@ -30,15 +26,6 @@ sync = false;
 
 % force sensor
 [~, h_FS]=vrep.simxGetObjectHandle(ID, 'Force_sensor', vrep.simx_opmode_blocking);
-
-% end effector
-[~, h_EE]=vrep.simxGetObjectHandle(ID, 'FollowedDummy', vrep.simx_opmode_blocking);
-
-
-% here you have to insert handles of RCM and h_j6 (maybe) to get desired
-% pose in relative frame (not absolute -1)
-
-
 
 % reference for direct kin
 % first RRP joints
@@ -66,7 +53,6 @@ if sync
     pause(1);
 end
 
-
 % preallocating for speed
 h_L = zeros(4,5); % here i save handles of landmarks
 h_L_EE = zeros(4,5); % here i save handles of balls attacched to EE
@@ -90,9 +76,6 @@ end
 %   SETTINGS
 %%
 
-% landmarks colors (old)
-% grays=[0.8; 0.6; 0.4; 0.2]*255;     %landmarks' gray shades
-
 % focal length (depth of the near clipping plane)
 fl = 0.01;
 
@@ -103,13 +86,13 @@ K = eye(6)*(10^-2);
 H = eye(6)*(10^-1);
 
 % compliance matrix of manipulator
-COMPLIANCE = eye(6)*(10^-1);
+C = eye(6)*(10^-1);
 
 % preallocating for speed
 us_desired = zeros(4,5);
 vs_desired = zeros(4,5);
-sync=false;
-
+Q = zeros(1,6); % joints vector
+sync = false;
 % desired features EXTRACTION
 for b=1:4 % balls
     for s=1:5 % spots
@@ -130,9 +113,8 @@ end
 force_torque_d=zeros(6,1);
 
 % end effector home pose
-home_pose = [ 0.09  0.035  -0.0938  -1.5702   -0.3370    0.7288]'; % this is the one wrt rcm (used for inverse kin);
+home_pose = [ 0.18474400 0.1270612  -0.0934647  -1.5118723   -0.65901488    0.38923407]'; % this is the one wrt rcm (used for inverse kin);
 
-Q = zeros(1,6);
 %%
 %	PROCESS LOOP
 %%
@@ -140,27 +122,11 @@ Q = zeros(1,6);
 % two possible control modes:
     % mode 0: go-to-home control mode; 
     % mode 1: visual servoing eye-on-hand control mode;
-mode=0;
+mode = 0;
+% start from landmark at spot+1
+spot = 0; % this valueis incremeted inside mode 0 after reaching home pos
 
-% mode 0 overview:
-	% i) features and depth extraction
-
-	% ii) building image jacobian and computing the error (vision-based only)
-			
-	% iii) adjusting the error (via the force-based infos)
-	
-    % iv) computing the ee displacement	
-    
-	% v) updating the pose
-
-% mode 1 is just a Cartesian proportionale regulator
-
-%start from landmark at spot+1
-spot = 0;
-
-% loop
 disp("------- STARTING -------");
-
 while spot < 6 % spots are 5
     
     time = vrep.simxGetLastCmdTime(ID) / 1000.0;
@@ -194,28 +160,40 @@ while spot < 6 % spots are 5
         
         % 2) COMPUTE ERROR
         
-        err=[home_pose(1:3) - ee_pose(1:3); angdiff(ee_pose(4:6), home_pose(4:6))];
+        position_err = home_pose(1:3) - ee_pose(1:3);
+        orientation_err = angdiff(ee_pose(4:6), home_pose(4:6));
+        
+        err=[position_err; orientation_err];
 
         % 3) EVALUATE EXIT CONDITION
         
-        if max(err)<=0.01
+        if norm(position_err,2)< 0.005
+            
             at_home = true;
             spot = spot+1;
             mode = 1;
             fprintf(1, 'GOING TOWARD SPOT : %d \n', spot);
             pause(1);
+            
         end
         
+        % PLOT
+              
+        %             disp("---");
+        %             disp([ "error on position: ",err(1)'] );
+        %             disp([ "error on orientation: ",err(2)'] );
+        
         x = time;
-        y = norm(err,2);
+        y = norm(position_err,2);
         % plot(x,y,'--b');
         stem(x,y,'-b');
         hold on
         grid on
-        ylim( [0 0.5]);
+        ylim( [0 0.25]);
         xlabel('time')
         ylabel('norm error')
         title('ERROR PLOT')
+        
         
         % 4) CORRECT AND UPDATE POSE
         

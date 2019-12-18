@@ -1,4 +1,4 @@
-% testing mode 1 
+% testing mode 1 (NOT WORKING ATM)
 
 %%
 %   INIT STUFF
@@ -42,7 +42,6 @@ pause(3);
 
 % reference for direct kin
 [~, h_RCM]=vrep.simxGetObjectHandle(ID, 'RCM_PSM1', vrep.simx_opmode_blocking);
-
 relativeToObjectHandle = h_RCM; % relative to which frame you want to know position of ee
 
 [sync] = syncronize( ID , vrep, h_j1, h_j2, h_j3, h_j4, h_j5, h_j6, h_7sx, h_7dx, h_RCM);
@@ -50,7 +49,6 @@ if sync
     fprintf(1,'Sycronization: OK... \n');
     pause(1);
 end
-
 
 % preallocating for speed
 h_L = zeros(4,5); % here i save handles of landmarks
@@ -191,7 +189,6 @@ while spot<6
               build_point_jacobian(us_current(2),vs_currect(2),zs_current(2),fl); ...
               build_point_jacobian(us_current(3),vs_currect(3),zs_current(3),fl); ...
               build_point_jacobian(us_current(4),vs_currect(4),zs_current(4),fl)]; 
-        
         
         % computing the error
         err= [us_desired(1,spot)-us_current(1); ...

@@ -279,15 +279,44 @@ while spot<6
         % updating the pose
         next_ee_pose= ee_pose + ee_displacement;
         
-        % qui serve una specie di metodo GO_THERE
+        % this error is expressed wrt vision frame, non posso usare una
+        % jacobiana espressa wrt RCM frame.
+        % mi serve una conversione fra vision sensor ed rcm:
+        % TRANSFORMATION MATRIX 4x4
         
-        error = ee_pose - next_ee_pose;
+        error_vs = ee_pose - next_ee_pose; % error wrt vision sensor
+        
+        
+        
+        
+        
+        % --------------------------------------
+        % ------------ TO DO -------------------
+        % --------------------------------------
+
+        % error_rcm = ee_pose_rcm - next_ee_pose_rcm;
+        error_rcm = zeros(6,1);
+        error_rcm(3) = -0.1;
+        % in questo caso sto simulando un errore sulla cordinata z,
+        % siccome il frame del rcm ha l' asse z verso l' alto (blu), ciò che
+        % notiamo è che il ee viene portato verso il basso.
+        % DA QUI SI CAPISCE CHE L' ERRORE CHE DOBBIAMO INVIARE DEVE ESSERE
+        % RISPETTO AL RCM E NON RISPETTO AL VISION SENSOR
+        
+        % credo sia corretto usare il frame h_j6 come start, visto che
+        % funziona per la mode0
+        % --------------------------------------
+        
+        
+        
+       
+        
         
         
         % 4) CORRECT AND UPDATE POSE
         
-        % computing new configuration via inverse inverse kinematics
-        Q = kinematicsRCM.inverse_kinematics(Q,error);
+        % computing the new configuration via inverse inverse kinematics
+        Q = kinematicsRCM.inverse_kinematics(Q,error_rcm);
         
         % sending to joints
         [~] = vrep.simxSetJointPosition(ID, h_j1, Q(1), vrep.simx_opmode_streaming);

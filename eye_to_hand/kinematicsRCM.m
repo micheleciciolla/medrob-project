@@ -47,7 +47,7 @@ classdef kinematicsRCM
             J = pinv(J);
             
 
-            v = [1 1 1 0.2 0.2 0.2]*10^-1; % we're correcting more the position that orientation (-80%)
+            v = [1 1 1 0 0 0]*10^-1; % we're not correcting the orientation
             alfa = diag(v);
             % computing gradient method for inverse kinematics
             Q = Q' + alfa*J*(err);

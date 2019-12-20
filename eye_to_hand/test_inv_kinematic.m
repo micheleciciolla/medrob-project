@@ -1,23 +1,20 @@
-
-% script to test movement of EE using inverse and direct kinematics
-
-%%
 %   INIT STUFF
-%%
+
 cd(fileparts(mfilename('fullpath')));
 clear;
 close all;
 clc;
 
-pause(3);
-%%
+pause(1.5);
+
+
 % CONNECTION TO VREP
-%%
+
 [ID,vrep] = init_connection();
 
-%%
+
 % COLLECTING HANDLES ans SYNCRONIZING
-%%
+
 
 % end effector attached dummy
 [~, h_EE]=vrep.simxGetObjectHandle(ID, 'FollowedDummy', vrep.simx_opmode_blocking);
@@ -41,8 +38,6 @@ pause(3);
 
 pause(0.1);
 
-% collection of handlers (not used atm)
-handles = [h_j1,h_j2,h_j3,h_j4,h_j5,h_j6,h_7sx,h_7dx,h_RCM];
 
 % syncronization phase (useful to wait to receive non zero values)
 [sync] = syncronize( ID , vrep, h_EE, h_j1, h_j2, h_j3, h_j4, h_j5, h_j6,h_7sx, h_7dx,h_RCM);
@@ -51,16 +46,10 @@ if sync
     pause(1);
 end
 
-%%
-%	PROCESS LOOP
-%%
-
-% end effector home pose in absolute frame (not used)
-% absolute = [ -1.5 ;   -4.07e-2;    +6.54e-1;  pi;         0;         0];
-
 % end effector home pose wrt RCM frame
 relative = [ 0.19 ;   0.07;   -0.20;  -1.5702;         -0.3370;        0.7288];
 
+% relative = [0.1597772; 0.0394285;-0.20; -0.3370;-0.500617027282715;0.473298996686935]
 ee_pose_d = relative;
 
 disp("------- STARTING -------");
@@ -70,17 +59,8 @@ not_reached = true;
 
 while not_reached && sync
     
-    % get current simulation time
     time = vrep.simxGetLastCmdTime(ID) / 1000.0;
-    
-    % getting the current pose
-    
-    %     relativeToObjectHandle: indicates relative to which reference frame we want the position.
-    %                             Specify -1 to retrieve the absolute position, 
-    %                             vrep.sim_handle_parent to retrieve the position relative to the object's parent,
-    %                             or an object handle relative to whose
-    %                             reference frame you want the position.
-    
+        
     relativeToObjectHandle = h_RCM;
     
     [~, ee_position]=vrep.simxGetObjectPosition(ID, h_j6, relativeToObjectHandle, vrep.simx_opmode_streaming);
@@ -101,9 +81,14 @@ while not_reached && sync
         
     % computing the error
     err=[ee_pose_d(1:3) - ee_pose(1:3); angdiff(ee_pose(4:6), ee_pose_d(4:6))];
-       
     
-    Q = kinematicsRCM.inverse_kinematics(Q,err);
+    % evaluating exit condition
+    if norm(err,2)<= 0.02
+        disp("Position reached");
+        not_reached = false;
+    end
+    
+    Q = kinematicsRCM.inverse_kinematics(Q,err,0);
     
     [~] = vrep.simxSetJointPosition(ID, h_j1, Q(1), vrep.simx_opmode_streaming);
     [~] = vrep.simxSetJointPosition(ID, h_j2, Q(2), vrep.simx_opmode_streaming);
@@ -114,12 +99,7 @@ while not_reached && sync
     
     pause(0.2);
     
-    % evaluating exit condition
-    if norm(err,2)<= 0.02
-        disp("Position reached");
-        not_reached = false;       
-    end
-    
+    % PLOT
     x = time;
     y = norm(err,2);
     % plot(x,y,'--b');
@@ -138,13 +118,7 @@ disp("Disconnecting...");
 pause(5);
 vrep.simxStopSimulation(ID, vrep.simx_opmode_oneshot);
 
-% check for inverse kinematics q = pinv( J(q) )*(p)
 
-% J(q)
-% Q = pinv(J)*ee_pose;
-% 
-% P = kinematicsRCM.ee_position(Q(1), Q(2), Q(3), Q(4), Q(5), Q(6) );
-% diff = (P - ee_pose(1:3));
 %%
 %	FUNCTIONS
 %%
@@ -301,39 +275,4 @@ while sx > 0
     pause(0.05);
 end
 
-end
-
-%%
-%	OLD
-%%
-
-%{
-    %getting the features
-    if ~isempty(image)
-        fs=extract_features(image, grays);
-    end
-%}
-
-function [fs] = extract_features(image, grays)
-%
-fs=zeros(4,1);
-%
-rimage=image(:,:,1);
-gimage=image(:,:,2);
-bimage=image(:,:,3);
-%
-for k=1:4
-    %
-    raw = (rimage==grays(k) & gimage==grays(k) & bimage==grays(k));
-    %
-    [J,I]=ind2sub(size(image),find(raw));
-    %
-    jmin=min(J);
-    jmax=max(J);
-    imin=min(I);
-    imax=max(I);
-    %
-    fs(k,[1, 2])=[jmin+(jmax-jmin)/2, imin+(imax-imin)/2];
-    %
-end
 end

@@ -38,18 +38,19 @@ classdef kinematicsRCM
             pos = [x,y,z]';
         end
         
-        function [Q] = inverse_kinematics(Q, err)
+        function [Q] = inverse_kinematics(Q, err, mode)
             
             % given error and current configuration returns next
             % configuration to converge to desired position -> err=0
             
-            J = kinematicsRCM.compute_jacobian(Q);
+            J = kinematicsRCM.compute_jacobian(Q);         
             J = pinv(J);
             
-
             v = [1 1 1 0.3 0.3 0.3]*10^-1; % we're not interested in orientation error
             alfa = diag(v);
-            % computing gradient method for inverse kinematics
+            
+            if(mode==1) alfa = 1; end % in mode 1 i need more speed
+            % computing newton method for inverse kinematics
             Q = Q' + alfa*J*(err);
             
         end

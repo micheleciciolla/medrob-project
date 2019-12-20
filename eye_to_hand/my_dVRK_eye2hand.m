@@ -89,7 +89,7 @@ K = eye(6)*(10^-2);
 H = eye(6)*(10^-1);
 
 % compliance matrix of manipulator
-COMPLIANCE = eye(6)*(10^-1);
+C = eye(6)*(10^-1);
 
 % preallocating for speed
 us_desired = zeros(4,5);
@@ -180,7 +180,7 @@ while spot<6
         %%
         
         % building the jacobian
-        INTERACTION = [ build_point_jacobian(us_current(1),vs_currect(1),zs_current(1),fl); ...
+        L = [ build_point_jacobian(us_current(1),vs_currect(1),zs_current(1),fl); ...
               build_point_jacobian(us_current(2),vs_currect(2),zs_current(2),fl); ...
               build_point_jacobian(us_current(3),vs_currect(3),zs_current(3),fl); ...
               build_point_jacobian(us_current(4),vs_currect(4),zs_current(4),fl)]; 
@@ -222,43 +222,36 @@ while spot<6
         force_torque=[force'; torque'];
         force_torque=round(force_torque,2);
         %
-        force_correction = INTERACTION*COMPLIANCE*(force_torque_d-force_torque);
+        force_correction = L*C*(force_torque_d-force_torque);
         err = err + force_correction;
         
         time = time +1;
-        
-%         if mod(time,10)==0
-%             disp( norm(err));
-%         end
-        
-        if mod(time,10)==0 && norm(force_torque)~=0
-            disp(["force sensor: ",force_torque']);
-        end
-        
+         
         %%
         %	IV) COMPUTING the EE DISPLACEMENT
         %%
         
            
         
-        % THIS NEEDS TO BE FIXED sostituire h_EE con h_j6?
-        while ~sync
-            [~, abg]=vrep.simxGetObjectOrientation(ID, h_VS, h_EE, vrep.simx_opmode_streaming);
-            sync = norm(abg,2)~=0;
-        end
-        sync=false;
-        
-        % THIS NEEDS TO BE FIXED
-        while ~sync
-            [~, tr]=vrep.simxGetObjectPosition(ID, h_VS, h_EE, vrep.simx_opmode_streaming);
-            sync = norm(tr,2)~=0;
-        end
-        sync=false;
+%         % THIS NEEDS TO BE FIXED sostituire h_EE con h_j6?
+%         while ~sync
+%             [~, abg]=vrep.simxGetObjectOrientation(ID, h_VS, h_EE, vrep.simx_opmode_streaming);
+%             sync = norm(abg,2)~=0;
+%         end
+%         sync=false;
+%         
+%         % THIS NEEDS TO BE FIXED
+%         while ~sync
+%             [~, tr]=vrep.simxGetObjectPosition(ID, h_VS, h_EE, vrep.simx_opmode_streaming);
+%             sync = norm(tr,2)~=0;
+%         end
+%         sync=false;
                 
         % computing the displacement
-        ee_displacement = K*pinv(-INTERACTION)*err;
+        ee_displacement = K*pinv(-L)*err;
         
         if norm(ee_displacement,2)<10^-2.5 %10^-2.9
+            disp("small");
             ee_displacement = (ee_displacement/norm(ee_displacement,2))*10^-2.5;
         end
         %
@@ -285,9 +278,9 @@ while spot<6
         
         
         % updating the pose
-        ee_pose= ee_pose + ee_displacement;
-        [~]= vrep.simxSetObjectPosition(ID, h_EE, h_VS, ee_pose(1:3), vrep.simx_opmode_oneshot);
-        [~]= vrep.simxSetObjectOrientation(ID, h_EE, h_VS, ee_pose(4:6), vrep.simx_opmode_oneshot);
+        next_ee_pose= ee_pose + ee_displacement;
+        [~]= vrep.simxSetObjectPosition(ID, h_EE, h_VS, next_ee_pose(1:3), vrep.simx_opmode_oneshot);
+        [~]= vrep.simxSetObjectOrientation(ID, h_EE, h_VS, next_ee_pose(4:6), vrep.simx_opmode_oneshot);
         
         
     elseif mode==0
@@ -327,10 +320,7 @@ while spot<6
            mode=1;
            spot=spot+1;
            fprintf(1,'GOING TOWARD LANDMARK: %d \n',spot);
-           
-           disp("this is home pose of h_j6 wrt h_rcm");
-           disp(ee_pose_relative);
-           
+                      
            pause(1);
            time = 0;
            continue;

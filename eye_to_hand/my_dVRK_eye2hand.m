@@ -44,6 +44,9 @@ pause(3);
 % reference for direct kin
 [~, h_RCM]=vrep.simxGetObjectHandle(ID, 'RCM_PSM1', vrep.simx_opmode_blocking);
 
+
+
+
 relativeToObjectHandle = h_RCM; % relative to which frame you want to know position of ee
 
 [sync] = syncronize( ID , vrep, h_j1, h_j2, h_j3, h_j4, h_j5, h_j6, h_7sx, h_7dx, h_RCM);
@@ -86,7 +89,7 @@ fl = 0.01;
 K = eye(6)*(10^-2);
 
 % control gain in mode 1 (see below)
-H = eye(6)*(10^-1);
+H = eye(6)*(10^-1)*2;
 
 % compliance matrix of manipulator
 C = eye(6)*(10^-1);
@@ -227,61 +230,42 @@ while spot<6
         
         time = time +1;
          
-        %%
         %	IV) COMPUTING the EE DISPLACEMENT
-        %%
-        
-           
-        
-%         % THIS NEEDS TO BE FIXED sostituire h_EE con h_j6?
-%         while ~sync
-%             [~, abg]=vrep.simxGetObjectOrientation(ID, h_VS, h_EE, vrep.simx_opmode_streaming);
-%             sync = norm(abg,2)~=0;
-%         end
-%         sync=false;
-%         
-%         % THIS NEEDS TO BE FIXED
-%         while ~sync
-%             [~, tr]=vrep.simxGetObjectPosition(ID, h_VS, h_EE, vrep.simx_opmode_streaming);
-%             sync = norm(tr,2)~=0;
-%         end
-%         sync=false;
-                
+              
         % computing the displacement
         ee_displacement = K*pinv(-L)*err;
         
         if norm(ee_displacement,2)<10^-2.5 %10^-2.9
-            disp("small");
             ee_displacement = (ee_displacement/norm(ee_displacement,2))*10^-2.5;
         end
-        %
         
-        %%
+        %__________________________________________________________________
+        %__________________________________________________________________
         %	V) UPDATING THE POSE
-        %%
-
-        % getting the current pose
-        
+    
+        % getting the current pose wrt VS
         while ~sync
-            [~, ee_position]=vrep.simxGetObjectPosition(ID, h_EE, h_VS, vrep.simx_opmode_streaming);
-            sync = norm(ee_position,2)~=0;
+            [~, ee_position_VS]=vrep.simxGetObjectPosition(ID, h_EE, h_VS, vrep.simx_opmode_streaming);
+            sync = norm(ee_position_VS,2)~=0;
         end
         sync=false;
         
         while ~sync
-            [~, ee_orientation]=vrep.simxGetObjectOrientation(ID, h_EE, h_VS, vrep.simx_opmode_streaming);
-            sync = norm(ee_orientation,2)~=0;
+            [~, ee_orientation_VS]=vrep.simxGetObjectOrientation(ID, h_EE, h_VS, vrep.simx_opmode_streaming);
+            sync = norm(ee_orientation_VS,2)~=0;
         end
         sync=false;
         
-        ee_pose= [ee_position, ee_orientation]'; 
-        
-        
+        ee_pose_VS= [ee_position_VS, ee_orientation_VS]'; 
+       
         % updating the pose
-        next_ee_pose= ee_pose + ee_displacement;
+        next_ee_pose= ee_pose_VS + ee_displacement;
+ 
         [~]= vrep.simxSetObjectPosition(ID, h_EE, h_VS, next_ee_pose(1:3), vrep.simx_opmode_oneshot);
         [~]= vrep.simxSetObjectOrientation(ID, h_EE, h_VS, next_ee_pose(4:6), vrep.simx_opmode_oneshot);
         
+        %__________________________________________________________________
+        %__________________________________________________________________
         
     elseif mode==0
         
@@ -297,22 +281,22 @@ while spot<6
         % getting the current pose
         
         while ~sync
-            [~, ee_position]=vrep.simxGetObjectPosition(ID, h_EE, -1, vrep.simx_opmode_streaming);
-            sync = norm(ee_position,2)~=0;
+            [~, ee_position_VS]=vrep.simxGetObjectPosition(ID, h_EE, -1, vrep.simx_opmode_streaming);
+            sync = norm(ee_position_VS,2)~=0;
         end
         sync=false;
         %
         while ~sync
-            [~, ee_orientation]=vrep.simxGetObjectOrientation(ID, h_EE, -1, vrep.simx_opmode_streaming);
-            sync = norm(ee_orientation,2)~=0;
+            [~, ee_orientation_VS]=vrep.simxGetObjectOrientation(ID, h_EE, -1, vrep.simx_opmode_streaming);
+            sync = norm(ee_orientation_VS,2)~=0;
         end
         sync=false;
         %
-        ee_pose= [ee_position, ee_orientation]'; 
+        ee_pose_VS= [ee_position_VS, ee_orientation_VS]'; 
         %
         
         %computing the error
-        err=[ee_pose_d(1:3) - ee_pose(1:3); angdiff(ee_pose(4:6), ee_pose_d(4:6)) ];
+        err=[ee_pose_d(1:3) - ee_pose_VS(1:3); angdiff(ee_pose_VS(4:6), ee_pose_d(4:6)) ];
         %
         
         % evaluating exit condition
@@ -325,17 +309,17 @@ while spot<6
            time = 0;
            continue;
         end
-        %
         
-        %computing the displacement
+        
+        % computing the displacement
         ee_displacement = H*err;
-        %
+        
 
-        %updating the pose
-        ee_pose= ee_pose + ee_displacement;
-        [~]= vrep.simxSetObjectPosition(ID, h_EE, -1, ee_pose(1:3), vrep.simx_opmode_oneshot);
-        [~]= vrep.simxSetObjectOrientation(ID, h_EE, -1, ee_pose(4:6), vrep.simx_opmode_oneshot);
-        %   
+        % updating the pose
+        ee_pose_VS= ee_pose_VS + ee_displacement;
+        [~]= vrep.simxSetObjectPosition(ID, h_EE, -1, ee_pose_VS(1:3), vrep.simx_opmode_oneshot);
+        [~]= vrep.simxSetObjectOrientation(ID, h_EE, -1, ee_pose_VS(4:6), vrep.simx_opmode_oneshot);
+          
     end
         
     pause(0.05);
@@ -400,39 +384,4 @@ function [J] = build_point_jacobian(u,v,z,fl)
     J = [ -fl/z     0          u/z     (u*v)/fl        -(fl+(u^2)/fl)      v; ...
           0         -fl/z      v/z     (fl+(v^2)/fl)    -(u*v)/fl          -u];
 
-end
-
-%%
-%	OLD
-%%
-
-%{    
-    %getting the features
-    if ~isempty(image)
-        fs=extract_features(image, grays);
-    end
-%}
-
-function [fs] = extract_features(image, grays)
-    %
-    fs=zeros(4,1);
-    %
-    rimage=image(:,:,1);
-    gimage=image(:,:,2);
-    bimage=image(:,:,3);
-    %
-    for k=1:4
-        %
-        raw = (rimage==grays(k) & gimage==grays(k) & bimage==grays(k));
-        %
-        [J,I]=ind2sub(size(image),find(raw));
-        %
-        jmin=min(J);
-        jmax=max(J);
-        imin=min(I);
-        imax=max(I);
-        %
-        fs(k,[1, 2])=[jmin+(jmax-jmin)/2, imin+(imax-imin)/2]; 
-        %
-    end
 end

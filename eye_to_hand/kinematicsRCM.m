@@ -1,5 +1,6 @@
 classdef kinematicsRCM
-    % from distributed/dVKinematics.cpp
+    % from distributed/dVKinematics.cpp 
+    % (Marco Ferro's file)
     properties
         t = zeros(27); % data structure to save data
         J = zeros(6,6); % jacobian
@@ -39,17 +40,27 @@ classdef kinematicsRCM
         end
         
         function [Q] = inverse_kinematics(Q, err, mode)
+            % Q : current config
+            % err : error in pose
+            % mode: 1 = visual servoing , 0 = go home proportional control
             
             % given error and current configuration returns next
-            % configuration to converge to desired position -> err=0
+            % configuration to converge to desired pose -> err=0
             
             J = kinematicsRCM.compute_jacobian(Q);         
-            J = pinv(J);
             
-            v = [1 1 1 0.3 0.3 0.3]*10^-1; % we're not interested in orientation error
-            alfa = diag(v);
-            
-            if(mode==1) alfa = 1; end % in mode 1 i need more speed
+            if mode==0 
+                J = pinv(J); % newton 
+                v = [1 1 1 0.3 0.3 0.3]*10^-1; % we're not interested in orientation error
+                alfa = diag(v);
+            end
+            if mode==1 
+                J = J'; % gradient
+                v = [1 1 1 1 1 1];
+                alfa = 0.1;
+            end
+                     
+                      
             % computing newton method for inverse kinematics
             Q = Q' + alfa*J*(err);
             
@@ -59,6 +70,7 @@ classdef kinematicsRCM
 
             % computes Jacobian of current configuration
             % formula of Jacobian has been taken from distributed/dVKinematics.cpp
+            % (Marco Ferro's file)
             
             q1 = Q(1); q2 = Q(2); q3 = Q(3); q4 = Q(4); q5 = Q(5); q6 = Q(6);
             l = 0;

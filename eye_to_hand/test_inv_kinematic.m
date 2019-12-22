@@ -47,7 +47,7 @@ if sync
 end
 
 % end effector home pose wrt RCM frame
-relative = [ 0.19 ;   0.07;   -0.20;  -1.5702;         -0.3370;        0.7288];
+relative = [ 0.19 ;   0.07;   -0.10;  -1.5702;         -0.3370;        0.7288];
 
 % relative = [0.1597772; 0.0394285;-0.20; -0.3370;-0.500617027282715;0.473298996686935]
 ee_pose_d = relative;
@@ -75,15 +75,16 @@ while not_reached && sync
     [~, q4]=vrep.simxGetJointPosition(ID,h_j4,vrep.simx_opmode_buffer);
     [~, q5]=vrep.simxGetJointPosition(ID,h_j5,vrep.simx_opmode_buffer);
     [~, q6]=vrep.simxGetJointPosition(ID,h_j6,vrep.simx_opmode_buffer);
-    pause(0.01);
+    pause(0.02);
     
     Q = [q1,q2,q3,q4,q5,q6];
         
     % computing the error
-    err=[ee_pose_d(1:3) - ee_pose(1:3); angdiff(ee_pose(4:6), ee_pose_d(4:6))];
+    % err=[ee_pose_d(1:3) - ee_pose(1:3); angdiff(ee_pose(4:6), ee_pose_d(4:6))];
+    err = utils.computeError(ee_pose_d,ee_pose);
     
     % evaluating exit condition
-    if norm(err,2)<= 0.02
+    if norm(err,2)<= 0.002
         disp("Position reached");
         not_reached = false;
     end
@@ -112,10 +113,8 @@ while not_reached && sync
 end
 
 disp("############ PROCESS ENDED ############");
-
 disp("Disconnecting...");
-
-pause(5);
+pause(4);
 vrep.simxStopSimulation(ID, vrep.simx_opmode_oneshot);
 
 

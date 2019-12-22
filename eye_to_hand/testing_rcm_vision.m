@@ -73,9 +73,6 @@ end
 %   SETTINGS
 %%
 
-% landmarks colors (old)
-% grays=[0.8; 0.6; 0.4; 0.2]*255;     %landmarks' gray shades
-
 % focal length (depth of the near clipping plane)
 fl = 0.01;
 
@@ -112,40 +109,18 @@ end
 % null desired force and torque
 force_torque_d=zeros(6,1);
 
-% end effector home pose (THIS NEEDS TO BE CORRECTED)
-ee_pose_d=[ -1.5413e+0;   -4.0699e-2;    +7.2534e-1;  -1.80e+2;         0;         0];
-home_pose = [ 0.09 0.035 -0.0938 -1.458 -0.586 0.7929]; % this is the one wrt rcm (used for inverse kin);
-
-%%
-%	PROCESS LOOP
-%%
-
-% two possible control modes:
-% mode 0: go-to-home control mode;
-% mode 1: visual servoing eye-on-hand control mode;
-mode=1;
-
-% mode 0 overview:
-% i) features and depth extraction
-
-% ii) building image jacobian and computing the error (vision-based only)
-
-% iii) adjusting the error (via the force-based infos)
-
-% iv) computing the ee displacement
-
-% v) updating the pose
-
-% mode 1 is just a Cartesian proportionale regulator
-
-%start from landmark at spot+1
+% PROCESS LOOP
+mode = 1;
+time = 0;
+% start from landmark at spot+1
 spot = 1;
 
 % loop
 disp("------- STARTING -------");
+
 while spot<6
     
-    time = vrep.simxGetLastCmdTime(ID) / 1000.0;
+    time = time +1;
     
     % getting current values of joints
     [~, q1]=vrep.simxGetJointPosition(ID,h_j1,vrep.simx_opmode_buffer);
@@ -155,6 +130,7 @@ while spot<6
     [~, q5]=vrep.simxGetJointPosition(ID,h_j5,vrep.simx_opmode_buffer);
     [~, q6]=vrep.simxGetJointPosition(ID,h_j6,vrep.simx_opmode_buffer);
     Q = [q1,q2,q3,q4,q5,q6];
+    pause(0.2);
     
     if mode==1
         
@@ -214,7 +190,7 @@ while spot<6
         % 4) EVALUATING EXIT CONDITIONS
         
         % evaluating exit condition
-        if norm(err,2)<=10^-3
+        if norm(err,2)<=10^-4
             if spot==5 % last spot
                 break;
             end
@@ -223,6 +199,13 @@ while spot<6
             fprintf(1, 'REACHED SPOT : %d \n', spot);
             continue;
         end
+                
+        if(mod(time,10)==0)
+            plot(err,'--*');
+            grid on
+            % ylim([-1 1]*10^-4)
+            title("image error");
+        end
         
         % _________________________________________________________________
         % _________________________________________________________________
@@ -230,58 +213,62 @@ while spot<6
         % 6) COMPUTING THE DISPLACEMENT
         
         % computing the displacement
-        ee_displacement = -K*pinv(L)*err;
+        ee_displacement_VS = K*pinv(-L)*err;
         
-        if norm(ee_displacement,2)<10^-2.5 %10^-2.9
-            ee_displacement = (ee_displacement/norm(ee_displacement,2))*10^-2.5;
+        if norm(ee_displacement_VS,2)<10^-2.5 %10^-2.9
+            ee_displacement_VS = (ee_displacement_VS/norm(ee_displacement_VS,2))*10^-2.5;
         end
          
         % _________________________________________________________________
         % _________________________________________________________________
         
-        % 7) GETTING THE POSE WRT VISION SENSOR
+        % 7) GETTING THE POSE WRT VISION SENSOR [VS]
         
         while ~sync
-            [~, ee_position]=vrep.simxGetObjectPosition(ID, h_j6, h_VS, vrep.simx_opmode_streaming);
-            sync = norm(ee_position,2)~=0;
+            [~, ee_position_VS]=vrep.simxGetObjectPosition(ID, h_j6, h_VS, vrep.simx_opmode_streaming);
+            sync = norm(ee_position_VS,2)~=0;
         end
         sync=false;
         
         while ~sync
-            [~, ee_orientation]=vrep.simxGetObjectOrientation(ID, h_j6, h_VS, vrep.simx_opmode_streaming);
-            sync = norm(ee_orientation,2)~=0;
+            [~, ee_orientation_VS]=vrep.simxGetObjectOrientation(ID, h_j6, h_VS, vrep.simx_opmode_streaming);
+            sync = norm(ee_orientation_VS,2)~=0;
         end
         sync=false;
         
-        ee_pose= [ee_position, ee_orientation]';
+        ee_pose_VS = [ee_position_VS, ee_orientation_VS]';
         
         % updating the pose
-        next_ee_pose= ee_pose + ee_displacement;
+        next_ee_pose_VS = ee_pose_VS + ee_displacement_VS;
         
-        if norm(ee_displacement,2)<10^-2.5
+        if norm(ee_displacement_VS,2)<10^-2.5
             % non so cosa faccia ma l' ho preso dallo script originale
-            ee_displacement = (ee_displacement/norm(ee_displacement,2))*10^-2.5;
+            ee_displacement_VS = (ee_displacement_VS/norm(ee_displacement_VS,2))*10^-2.5;
         end
-                
-        % this is the distance between VS frame and RCM frame (from VS -> RCM)
+        
+        % _________________________________________________________________
+             
+        % distance between origins: VS_frame and RCM_frame (from VS -> RCM)
+        % used below to get pose wrt RCM
+
         while ~sync
             [~, vs2rcm_position]=vrep.simxGetObjectPosition(ID, h_RCM ,h_VS, vrep.simx_opmode_streaming);
             [~, vs2rcm_orientation]=vrep.simxGetObjectOrientation(ID, h_RCM ,h_VS, vrep.simx_opmode_streaming);
             sync = norm(vs2rcm_position,2)~=0;
         end
-        sync=false;
-        
+        sync = false;
+             
         vs2rcm = [vs2rcm_position';vs2rcm_orientation'];
         
         % _________________________________________________________________
         % _________________________________________________________________        
         
-        % 8) GETTING THE POSE WRT RCM
+        % 8) GETTING THE POSE WRT RCM (error on orientation) [RCM]
         
         % this is the position of ee_pose wrt RCM frame
-        ee_wrt_RCM = getRelativePosRCM(vs2rcm,ee_pose);
+        ee_wrt_RCM = getRelativePosRCM(vs2rcm,ee_pose_VS);
         % this is the next position of ee_pose wrt RCM frame
-        next_ee_wrt_RCM = getRelativePosRCM(vs2rcm,next_ee_pose);
+        next_ee_wrt_RCM = getRelativePosRCM(vs2rcm,next_ee_pose_VS);
 
         while ~sync
             [~, rcmp]=vrep.simxGetObjectPosition(ID, h_j6 ,h_RCM, vrep.simx_opmode_streaming);
@@ -289,25 +276,25 @@ while spot<6
             sync = norm(rcmp,2)~=0;
         end
 
-        real_rcm = [rcmp';[0 0 0]'];
+        real_rcm = [rcmp';rcmo'];
         
-        % this is used to test is prediction is good
-        difference = computeError(real_rcm,ee_wrt_RCM);
-        
-        
-        
+        % this is used to test if prediction is good
+        % l' errore sull' orientamento è basso ma non capisco perche non
+        % va.
+        difference = utils.computeError(real_rcm, ee_wrt_RCM)
+               
         % _________________________________________________________________
         % _________________________________________________________________  
         
         % error_rcm = zeros(6,1);
-        % error_rcm(3) = -0.01; % simulo errore solo su z
+        % error_rcm(1) = -0.01; % simulo errore solo su z
         
-        error_rcm = computeError(next_ee_wrt_RCM,ee_wrt_RCM);
-        
+        error_rcm = utils.computeError( next_ee_wrt_RCM, ee_wrt_RCM );
+                
         % 9) CORRECT AND UPDATE POSE via INVERSE KINEMATICS
         
         % computing the new configuration via inverse inverse kinematics
-        Q = kinematicsRCM.inverse_kinematics(Q, error_rcm, mode);
+        Q = kinematicsRCM.inverse_kinematics(Q, error_rcm, 1);
         
         % sending to joints
         [~] = vrep.simxSetJointPosition(ID, h_j1, Q(1), vrep.simx_opmode_streaming);
@@ -316,7 +303,7 @@ while spot<6
         [~] = vrep.simxSetJointPosition(ID, h_j4, Q(4), vrep.simx_opmode_streaming);
         [~] = vrep.simxSetJointPosition(ID, h_j5, Q(5), vrep.simx_opmode_streaming);
         [~] = vrep.simxSetJointPosition(ID, h_j6, Q(6), vrep.simx_opmode_streaming);
-        pause(0.2);
+        pause(0.4);
         
     elseif mode == 0
         
@@ -390,17 +377,40 @@ J = [ -fl/z     0          u/z     (u*v)/fl        -(fl+(u^2)/fl)      v; ...
 end
 
 function [relative] = getRelativePosRCM(vs2rcm,ee_pose)
+% Knowing relative position of RCM frame and Vision Sensor frame 
+% this method returns a pose in RCM frame, given a pose in VisionSensor Frame.
+%
+% vs2rcm : 6x1 vector of position and orientation of RCM wrt VS
+% ee_pose : pose of EE wrt VS
+% 
+% extracting rot. matrix associated to orientation described in euler
+% angles of rcm wrt vision sensor. 
+% This is used in calculating the relative position
+rotm_VS_RCM = eul2rotm(vs2rcm(4:6)', 'XYZ'); % vrep default eul represent.
 
-RotMatrix = eul2rotm(vs2rcm(4:6)', 'XYZ');
+% This rot. matrix is the one attached to the relative position of EE wrt
+% Vision Sensor. 
+% ee_pose(4:6) is an euler angles representation from which i get a rot.
+% matrix. This is used in calculating the new orientation
+rotm_VS_EE = eul2rotm(ee_pose(4:6)',  'XYZ');
 
-relative_position = -(RotMatrix')*vs2rcm(1:3) + (RotMatrix')*ee_pose(1:3);
-relative_orientation = zeros(3,1); % to be completed
+% This is [x y z] expressed in RCM frame starting from [x y z] in VS reference.
+relative_position = -(rotm_VS_RCM')*vs2rcm(1:3) + (rotm_VS_RCM')*ee_pose(1:3);
 
-relative = [relative_position; relative_orientation];
+% This R4 matrix is the rotation matrix from RCM to EE 
+% Is the result of concatenating RCM -> VS -> EE matrices
+R4 = rotm_VS_RCM\rotm_VS_EE; % inv(RotMatrix)*R3 - same notation
+
+% From this rotation matrix we extract euler angles orientation
+relative_orientation = rotm2eul(R4,'XYZ'); % to be solved
+
+% output
+relative = [relative_position; relative_orientation'];
 
 end
 
 function [error] = computeError(desired, current)
+% computes error between poses
 error = [desired(1:3) - current(1:3); angdiff(current(4:6), desired(4:6))];
 
 end 

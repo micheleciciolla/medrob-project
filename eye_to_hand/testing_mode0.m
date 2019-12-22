@@ -1,7 +1,3 @@
-% testing mode 0 with inverse kin
-
-
-
 %%
 %   INIT STUFF
 %%
@@ -53,83 +49,19 @@ if sync
     pause(1);
 end
 
-% preallocating for speed
-h_L = zeros(4,5); % here i save handles of landmarks
-h_L_EE = zeros(4,5); % here i save handles of balls attacched to EE
-
-% landmarks attached to goal positions : 
-% we have 5 location to achieve
-% each location has 4 landmarks
-
-for b=1:4 % each spot has 4 balls
-    for s=1:5 % 5 total spots
-        [~, h_L(b,s)]=vrep.simxGetObjectHandle(ID, ['Landmark', num2str(s), num2str(b)], vrep.simx_opmode_blocking);
-    end
-end
-
-% landmarks attached to EE -> 'LandmarkEE1,2,3,4'
-for b=1:4
-    [~, h_L_EE(b)]=vrep.simxGetObjectHandle(ID, ['LandmarkEE', num2str(b)], vrep.simx_opmode_blocking);
-end
-
-%%
-%   SETTINGS
-%%
-
-% focal length (depth of the near clipping plane)
-fl = 0.01;
-
-% control gain in mode 0 (see below)
-K = eye(6)*(10^-2);
-
-% control gain in mode 1 (see below)
-H = eye(6)*(10^-1);
-
-% compliance matrix of manipulator
-C = eye(6)*(10^-1);
-
-% preallocating for speed
-us_desired = zeros(4,5);
-vs_desired = zeros(4,5);
-Q = zeros(1,6); % joints vector
-sync = false;
-% desired features EXTRACTION
-for b=1:4 % balls
-    for s=1:5 % spots
-        while ~sync % until i dont get valid values
-            [~, l_position]=vrep.simxGetObjectPosition(ID, h_L(b,s), h_VS, vrep.simx_opmode_streaming);
-            sync = norm(l_position,2)~=0;
-        end
-        sync=false;
-        
-        % here you have all landmark positions in image plane
-        us_desired(b,s)= fl*l_position(1)/l_position(3);
-        vs_desired(b,s)= fl*l_position(2)/l_position(3);
-        
-    end
-end
-
-% null desired force and torque
-force_torque_d=zeros(6,1);
-
 % end effector home pose
 home_pose = [ 0.18474400 0.1270612  -0.0934647  -1.5118723   -0.65901488    0.38923407]'; % this is the one wrt rcm (used for inverse kin);
 
-%%
 %	PROCESS LOOP
-%%
 
-% two possible control modes:
-    % mode 0: go-to-home control mode; 
-    % mode 1: visual servoing eye-on-hand control mode;
 mode = 0;
-% start from landmark at spot+1
-spot = 0; % this valueis incremeted inside mode 0 after reaching home pos
+spot = 0;
+time = 0;
 
 disp("------- STARTING -------");
 while spot < 6 % spots are 5
     
-    time = vrep.simxGetLastCmdTime(ID) / 1000.0;
+    time = time +1;
 
     % getting current values of joints
     [~, q1]=vrep.simxGetJointPosition(ID,h_j1,vrep.simx_opmode_buffer);
@@ -139,6 +71,7 @@ while spot < 6 % spots are 5
     [~, q5]=vrep.simxGetJointPosition(ID,h_j5,vrep.simx_opmode_buffer);
     [~, q6]=vrep.simxGetJointPosition(ID,h_j6,vrep.simx_opmode_buffer);    
     Q = [q1,q2,q3,q4,q5,q6];
+    
     
     if mode == 1
         
@@ -151,23 +84,16 @@ while spot < 6 % spots are 5
         
         % 1) READ CURRENT POSE OF joint 6 wrt RCM frame
         
-        relativeToObjectHandle = h_RCM;
-        
-        [~, ee_position]=vrep.simxGetObjectPosition(ID, h_j6, relativeToObjectHandle, vrep.simx_opmode_streaming);
-        [~, ee_orientation]=vrep.simxGetObjectOrientation(ID, h_j6, relativeToObjectHandle, vrep.simx_opmode_streaming);
+        [~, ee_position]=vrep.simxGetObjectPosition(ID, h_j6, h_RCM, vrep.simx_opmode_streaming);
+        [~, ee_orientation]=vrep.simxGetObjectOrientation(ID, h_j6, h_RCM, vrep.simx_opmode_streaming);
         
         ee_pose= [ee_position, ee_orientation]';
         
         % 2) COMPUTE ERROR
+        err = utils.computeError(home_pose,ee_pose);
         
-        position_err = home_pose(1:3) - ee_pose(1:3);
-        orientation_err = angdiff(ee_pose(4:6), home_pose(4:6));
-        
-        err=[position_err; orientation_err];
-
         % 3) EVALUATE EXIT CONDITION
-        
-        if norm(position_err,2)< 0.005
+        if norm(err(1:3),2)< 0.005
             
             at_home = true;
             spot = spot+1;
@@ -176,29 +102,25 @@ while spot < 6 % spots are 5
             pause(1);
             
         end
-        
+         
         % PLOT
-              
-        %             disp("---");
-        %             disp([ "error on position: ",err(1)'] );
-        %             disp([ "error on orientation: ",err(2)'] );
-        
-        x = time;
-        y = norm(position_err,2);
-        % plot(x,y,'--b');
-        stem(x,y,'-b');
-        hold on
-        grid on
-        ylim( [0 0.25]);
-        xlabel('time')
-        ylabel('norm error')
-        title('ERROR PLOT')
-        
-        
+        if( mod(time,5)==0)
+            x = time/100;
+            y = norm(err(1:3),2);
+            % plot(x,y,'--b');
+            stem(x,y,'-b');
+            hold on
+            grid on
+            ylim( [0 0.25]);
+            xlabel('time')
+            ylabel('norm error')
+            title('ERROR PLOT')
+        end
+                
         % 4) CORRECT AND UPDATE POSE
         
         % computing new configuration via inverse inverse kinematics
-        Q = kinematicsRCM.inverse_kinematics(Q,err);
+        Q = kinematicsRCM.inverse_kinematics(Q,err,0);
         
         % sending to joints
         [~] = vrep.simxSetJointPosition(ID, h_j1, Q(1), vrep.simx_opmode_streaming);
@@ -207,7 +129,7 @@ while spot < 6 % spots are 5
         [~] = vrep.simxSetJointPosition(ID, h_j4, Q(4), vrep.simx_opmode_streaming);
         [~] = vrep.simxSetJointPosition(ID, h_j5, Q(5), vrep.simx_opmode_streaming);
         [~] = vrep.simxSetJointPosition(ID, h_j6, Q(6), vrep.simx_opmode_streaming);
-        pause(0.2);
+        pause(0.01);
         
     end
 end

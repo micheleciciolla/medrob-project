@@ -41,6 +41,36 @@ classdef utils
             % computes error between poses
             error = [desired(1:3) - current(1:3); angdiff(current(4:6), desired(4:6))];            
         end
+        
+        function [] = compute_grasp(clientID, h_7sx, h_7dx, vrep)
+            
+            % this function computes a grasp (only image rendering)
+            % no interaction with objects
+            
+            sx = vrep.simxGetJointPosition(clientID,h_7sx,vrep.simx_opmode_streaming);
+            dx = vrep.simxGetJointPosition(clientID,h_7dx,vrep.simx_opmode_streaming);
+            
+            % open
+            while sx < 3.14/4
+                [~] = vrep.simxSetJointPosition(clientID, h_7sx, sx, vrep.simx_opmode_streaming);
+                sx = sx + 0.02;
+                [~] = vrep.simxSetJointPosition(clientID, h_7dx, sx, vrep.simx_opmode_streaming);
+                dx = dx + 0.02;
+                pause(0.05);
+            end
+            
+            pause(1);
+            
+            % close
+            while sx > 0
+                [~] = vrep.simxSetJointPosition(clientID, h_7sx, sx, vrep.simx_opmode_streaming);
+                sx = sx - 0.02;
+                [~] = vrep.simxSetJointPosition(clientID, h_7dx, sx, vrep.simx_opmode_streaming);
+                dx = dx - 0.02;
+                pause(0.05);
+            end
+        end
+
               
     end
 end

@@ -7,7 +7,9 @@ classdef kinematicsRCM
     end
     methods (Static)
         
-              function [pos] = direct_kinematics(Q)
+        
+        
+        function [pos] = direct_kinematics(Q)
             
             % computes position of EE wrt RCM given joints values
             % output is 3x1 vector
@@ -80,16 +82,15 @@ classdef kinematicsRCM
             
         end
         
-        function [] = setJoints(ID, vrep, h_joints, Q_new)
+        function [~] = setJoints(ID, vrep, h_joints, Q_new)
             
-            % sending values in Q_new to Joints
-            [~] = vrep.simxSetJointPosition(ID, h_joints(1), Q_new(1), vrep.simx_opmode_streaming);
-            [~] = vrep.simxSetJointPosition(ID, h_joints(2), Q_new(2), vrep.simx_opmode_streaming);
-            [~] = vrep.simxSetJointPosition(ID, h_joints(3), Q_new(3), vrep.simx_opmode_streaming);
-            [~] = vrep.simxSetJointPosition(ID, h_joints(4), Q_new(4), vrep.simx_opmode_streaming);
-            [~] = vrep.simxSetJointPosition(ID, h_joints(5), Q_new(5), vrep.simx_opmode_streaming);
-            [~] = vrep.simxSetJointPosition(ID, h_joints(6), Q_new(6), vrep.simx_opmode_streaming);
-            pause(0.01);
+                                [~] = vrep.simxSetJointPosition(ID, h_j1, Q_new(1), vrep.simx_opmode_streaming);
+        [~] = vrep.simxSetJointPosition(ID, h_j2, Q_new(2), vrep.simx_opmode_streaming);
+        [~] = vrep.simxSetJointPosition(ID, h_j3, Q_new(3), vrep.simx_opmode_streaming);
+        [~] = vrep.simxSetJointPosition(ID, h_j4, Q_new(4), vrep.simx_opmode_streaming);
+        [~] = vrep.simxSetJointPosition(ID, h_j5, Q_new(5), vrep.simx_opmode_streaming);
+        [~] = vrep.simxSetJointPosition(ID, h_j6, Q_new(6), vrep.simx_opmode_streaming);
+        pause(0.01);
         end
 
         

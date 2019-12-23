@@ -11,7 +11,7 @@ pause(3);
 % CONNECTION TO VREP
 %%
 
-[ID,vrep] = init_connection();
+[ID,vrep] = utils.init_connection();
 
 %%
 % COLLECTING HANDLES
@@ -148,7 +148,10 @@ mode=0;
 spot = 0;
 
 % loop
-disp("------- STARTING -------");
+% disp("******* STARTING ******* \n");
+fprintf(2,'******* STARTING ******* \n');
+
+
 time = 0; % time costant useful for plot ecc.
 while spot<6
     
@@ -183,10 +186,10 @@ while spot<6
         %%
         
         % building the jacobian
-        L = [ build_point_jacobian(us_current(1),vs_currect(1),zs_current(1),fl); ...
-              build_point_jacobian(us_current(2),vs_currect(2),zs_current(2),fl); ...
-              build_point_jacobian(us_current(3),vs_currect(3),zs_current(3),fl); ...
-              build_point_jacobian(us_current(4),vs_currect(4),zs_current(4),fl)]; 
+        L = [ utils.build_point_jacobian(us_current(1),vs_currect(1),zs_current(1),fl); ...
+              utils.build_point_jacobian(us_current(2),vs_currect(2),zs_current(2),fl); ...
+              utils.build_point_jacobian(us_current(3),vs_currect(3),zs_current(3),fl); ...
+              utils.build_point_jacobian(us_current(4),vs_currect(4),zs_current(4),fl)]; 
         
         % computing the error
         err= [us_desired(1,spot)-us_current(1); ...
@@ -325,27 +328,12 @@ while spot<6
     pause(0.05);
 end
 
-disp("############ PROCESS ENDED ############");
+fprintf(2,'**** PROCESS ENDED *****');
 
 %%
-%	FUNCTIONS
+%	UTILS FUNCTIONS
 %%
 
-
-function [clientID,vrep] = init_connection()
-
-    fprintf(1,'START...  \n');
-    vrep=remApi('remoteApi'); % using the prototype file (remoteApiProto.m)
-    vrep.simxFinish(-1); % just in case, close all opened connections
-    clientID=vrep.simxStart('127.0.0.1',19999,true,true,5000,5);
-    fprintf(1,'client %d\n', clientID);
-    if (clientID > -1)
-        fprintf(1,'Connection: OK... \n');
-    else
-        fprintf(2,'Connection: ERROR \n');
-        return;
-    end
-end
 
 function [sync]  = syncronize(ID , vrep, h_j1, h_j2, h_j3, h_j4, h_j5, h_j6, h_7sx, h_7dx, h_RCM)
 % to be prettyfied -> you will receive in input just (clientID , vrep, handles)
@@ -377,11 +365,5 @@ while ~sync
 
     sync = norm(some,2)~=0;
 end
-
-end
-
-function [J] = build_point_jacobian(u,v,z,fl)
-    J = [ -fl/z     0          u/z     (u*v)/fl        -(fl+(u^2)/fl)      v; ...
-          0         -fl/z      v/z     (fl+(v^2)/fl)    -(u*v)/fl          -u];
 
 end

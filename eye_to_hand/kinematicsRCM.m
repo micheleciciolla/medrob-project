@@ -6,6 +6,20 @@ classdef kinematicsRCM
         J = zeros(6,6); % jacobian
     end
     methods (Static)
+        
+        function [Q] = getJoints(ID, vrep, h_joints)
+            
+            % getting current values of joints
+            [~, q1] = vrep.simxGetJointPosition(ID, h_joints(1), vrep.simx_opmode_buffer);
+            [~, q2] = vrep.simxGetJointPosition(ID, h_joints(2), vrep.simx_opmode_buffer);
+            [~, q3] = vrep.simxGetJointPosition(ID, h_joints(3), vrep.simx_opmode_buffer);
+            [~, q4] = vrep.simxGetJointPosition(ID, h_joints(4), vrep.simx_opmode_buffer);
+            [~, q5] = vrep.simxGetJointPosition(ID, h_joints(5), vrep.simx_opmode_buffer);
+            [~, q6] = vrep.simxGetJointPosition(ID, h_joints(6), vrep.simx_opmode_buffer);
+            Q = [q1,q2,q3,q4,q5,q6];
+            
+        end
+        
         function [pos] = direct_kinematics(Q)
             
             % computes position of EE wrt RCM given joints values
@@ -40,7 +54,8 @@ classdef kinematicsRCM
         end
         
         function [Q] = inverse_kinematics(Q, err, mode)
-            % Q : current config
+            
+            % Q : current config 1x6
             % err : error in pose
             % mode: 1 = visual servoing , 0 = go home proportional control
             
@@ -48,19 +63,18 @@ classdef kinematicsRCM
             % configuration to converge to desired pose -> err=0
             
             J = kinematicsRCM.compute_jacobian(Q);         
-            
+            J = pinv(J); % newton
+
             if mode==0 
-                J = pinv(J); % newton 
-                v = [1 1 1 0.3 0.3 0.3]*10^-1; % we're not interested in orientation error
+                v = [1 1 1 1 1 1]*10^-1;
                 alfa = diag(v);
             end
+            
             if mode==1 
-                J = J'; % gradient
-                v = [1 1 1 1 1 1];
-                alfa = 0.1;
+                v = [0.3 0.3 0.3 0.3 0.3 0.3]*5; 
+                alfa = diag(v);
             end
-                     
-                      
+                                           
             % computing newton method for inverse kinematics
             Q = Q' + alfa*J*(err);
             

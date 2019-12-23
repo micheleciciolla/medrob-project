@@ -1,9 +1,82 @@
 classdef utils
     % utilities methods
     properties
-        % null        
+        % null
     end
     methods (Static)
+        
+        function [clientID,vrep] = init_connection()
+            
+            % function used to initialize connection with vrep side
+            
+            fprintf(1,'START...  \n');
+            vrep=remApi('remoteApi'); % using the prototype file (remoteApiProto.m)
+            vrep.simxFinish(-1); % just in case, close all opened connections
+            clientID=vrep.simxStart('127.0.0.1',19999,true,true,5000,5);
+            fprintf(1,'client %d\n', clientID);
+            if (clientID > -1)
+                fprintf(1,'Connection: OK... \n');
+            else
+                fprintf(2,'Connection: ERROR \n');
+                return;
+            end
+        end
+        
+        
+        function [sync]  = syncronize(ID , vrep, h_joints, h_RCM, h_VS)
+      
+            % used to wait to receive non zero values from vrep model
+            % usually matlab and vrep need few seconds to send valid values
+            
+            sync = false;
+            while ~sync
+                % syncronizing all joints
+                [~,~] = vrep.simxGetJointPosition(ID, h_joints(1), vrep.simx_opmode_streaming);
+                [~,~] = vrep.simxGetJointPosition(ID, h_joints(2), vrep.simx_opmode_streaming);
+                [~,~] = vrep.simxGetJointPosition(ID, h_joints(3), vrep.simx_opmode_streaming);
+                [~,~] = vrep.simxGetJointPosition(ID, h_joints(4), vrep.simx_opmode_streaming);
+                [~,~] = vrep.simxGetJointPosition(ID, h_joints(5), vrep.simx_opmode_streaming);
+                [~,v1]=vrep.simxGetJointPosition(ID,h_joints(6),vrep.simx_opmode_streaming);
+                sync = norm(v1,2)~=0;                
+            end
+            
+            sync = false;
+            while ~sync
+                % syncronizing position of joint 6 wrt RCM
+                [~, v2]=vrep.simxGetObjectPosition(ID, h_joints(6), h_RCM, vrep.simx_opmode_streaming);
+                [~, ~]=vrep.simxGetObjectOrientation(ID, h_joints(6), h_RCM, vrep.simx_opmode_streaming); 
+                % syncronizing position of joint 6 wrt VS
+                [~, ~]=vrep.simxGetObjectPosition(ID, h_joints(6), h_VS, vrep.simx_opmode_streaming);
+                [~, ~]=vrep.simxGetObjectOrientation(ID, h_joints(6), h_VS, vrep.simx_opmode_streaming);
+                sync = norm(v2,2)~=0;
+            end
+            
+            sync = false;            
+            while ~sync
+                % syncronizing position of RCM wrt VS
+                [~, v3]=vrep.simxGetObjectPosition(ID, h_RCM ,h_VS, vrep.simx_opmode_streaming);
+                [~, ~]=vrep.simxGetObjectOrientation(ID, h_RCM ,h_VS, vrep.simx_opmode_streaming);
+                % syncronizing position of VS wrt RCM
+                [~, ~]=vrep.simxGetObjectPosition(ID, h_VS, h_RCM, vrep.simx_opmode_streaming);
+                [~, ~]=vrep.simxGetObjectOrientation(ID, h_VS, h_RCM, vrep.simx_opmode_streaming);
+                
+                sync = norm(v3,2)~=0;
+            end
+            
+        end
+        
+        
+        
+        
+        function [J] = build_point_jacobian(u,v,z,fl)
+            
+            % function used to build interaction matrix
+            
+            J = [ -fl/z     0          u/z     (u*v)/fl        -(fl+(u^2)/fl)      v; ...
+                0         -fl/z      v/z     (fl+(v^2)/fl)    -(u*v)/fl          -u];
+            
+        end
+        
         function [relative] = getPoseInRCM(vs2rcm,ee_pose)
             % Knowing relative position of RCM frame and Vision Sensor frame
             % this method returns a pose in RCM frame, given a pose in VisionSensor Frame.
@@ -36,10 +109,10 @@ classdef utils
             relative = [relative_position; relative_orientation'];
             
         end
-                
+        
         function [error] = computeError(desired, current)
             % computes error between poses
-            error = [desired(1:3) - current(1:3); angdiff(current(4:6), desired(4:6))];            
+            error = [desired(1:3)- current(1:3); angdiff(current(4:6),desired(4:6) )];
         end
         
         function [] = compute_grasp(clientID, h_7sx, h_7dx, vrep)
@@ -70,7 +143,7 @@ classdef utils
                 pause(0.05);
             end
         end
-
-              
+        
+        
     end
 end

@@ -41,8 +41,6 @@ pause(3);
 % reference for direct kin
 [~, h_RCM]=vrep.simxGetObjectHandle(ID, 'RCM_PSM1', vrep.simx_opmode_blocking);
 
-relativeToObjectHandle = h_RCM; % relative to which frame you want to know position of ee
-
 [sync] = syncronize( ID , vrep, h_j1, h_j2, h_j3, h_j4, h_j5, h_j6, h_7sx, h_7dx, h_RCM);
 if sync
     disp("Syncronized.");
@@ -50,9 +48,7 @@ if sync
 end
 
 % end effector home pose
-home_pose = [ 0.18474400 0.1270612  -0.0934647  -1.5118723   -0.65901488    0.38923407]'; % this is the one wrt rcm (used for inverse kin);
-
-%	PROCESS LOOP
+home_pose = [ 0.18474400 0.1570612  -0.0934647  -1.5118723   -0.65901488    0.38923407]'; % this is the one wrt rcm
 
 mode = 0;
 spot = 0;

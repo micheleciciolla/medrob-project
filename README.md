@@ -12,7 +12,7 @@ Click here for the DEMO VERSION: [to-do]
 
 ## Team
 * Michele Ciciolla <a href="https://github.com/micheleciciolla"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Octicons-mark-github.svg/1024px-Octicons-mark-github.svg.png" width="30"></a>
-<a href="https://https://www.linkedin.com/in/micheleciciolla/"><img src="https://www.tecnomagazine.it/tech/wp-content/uploads/2013/05/linkedin-aggiungere-immagini.png" width="30"></a>
+<a href="https://www.linkedin.com/in/micheleciciolla/"><img src="https://www.tecnomagazine.it/tech/wp-content/uploads/2013/05/linkedin-aggiungere-immagini.png" width="30"></a>
 
 * Flavio Lorenzi <a href="https://github.com/FlavioLorenzi"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Octicons-mark-github.svg/1024px-Octicons-mark-github.svg.png" width="30"></a>
 

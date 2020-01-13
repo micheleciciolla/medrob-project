@@ -45,8 +45,6 @@ pause(3);
 [~, h_RCM]=vrep.simxGetObjectHandle(ID, 'RCM_PSM1', vrep.simx_opmode_blocking);
 
 
-
-
 relativeToObjectHandle = h_RCM; % relative to which frame you want to know position of ee
 
 [sync] = syncronize( ID , vrep, h_j1, h_j2, h_j3, h_j4, h_j5, h_j6, h_7sx, h_7dx, h_RCM);
@@ -129,7 +127,7 @@ home_pose = [ 0.09 0.035 -0.0938 -1.458 -0.586 0.7929]; % this is the one wrt rc
 % two possible control modes:
     % mode 0: go-to-home control mode; 
     % mode 1: visual servoing eye-on-hand control mode;
-mode=0;
+mode = 0;
 
 % mode 0 overview:
 	% i) features and depth extraction
@@ -151,8 +149,7 @@ spot = 0;
 % disp("******* STARTING ******* \n");
 fprintf(2,'******* STARTING ******* \n');
 
-
-time = 0; % time costant useful for plot ecc.
+time = 0; % time variable, useful for plot ecc.
 while spot<6
     
     if mode==1
@@ -166,7 +163,7 @@ while spot<6
         zs_current = zeros(4,1);
         
         % GETTING CURRECT POSITION OF EE IN IMAGE PLANE
-        for b=1:4 % balls
+        for b=1:4 % ee_balls
             while ~sync  % until i dont get valid values
                 [~, l_position]=vrep.simxGetObjectPosition(ID, h_L_EE(b), h_VS, vrep.simx_opmode_streaming);
                 sync = norm(l_position,2)~=0;
@@ -232,7 +229,8 @@ while spot<6
         err = err + force_correction;
         
         time = time +1;
-         
+        
+        %% 
         %	IV) COMPUTING the EE DISPLACEMENT
               
         % computing the displacement
@@ -262,19 +260,16 @@ while spot<6
         ee_pose_VS= [ee_position_VS, ee_orientation_VS]'; 
        
         % updating the pose
-        next_ee_pose= ee_pose_VS + ee_displacement;
+        next_ee_pose_VS= ee_pose_VS + ee_displacement;
  
-        [~]= vrep.simxSetObjectPosition(ID, h_EE, h_VS, next_ee_pose(1:3), vrep.simx_opmode_oneshot);
-        [~]= vrep.simxSetObjectOrientation(ID, h_EE, h_VS, next_ee_pose(4:6), vrep.simx_opmode_oneshot);
+        [~]= vrep.simxSetObjectPosition(ID, h_EE, h_VS, next_ee_pose_VS(1:3), vrep.simx_opmode_oneshot);
+        [~]= vrep.simxSetObjectOrientation(ID, h_EE, h_VS, next_ee_pose_VS(4:6), vrep.simx_opmode_oneshot);
         
         %__________________________________________________________________
         %__________________________________________________________________
         
     elseif mode==0
-        
-        % INSERT HERE GO TO HOME SCRIPT (copia ed incolla quando l' hai
-        % completato nell' altro script
-        
+                
         % once inverse kinematics is done you can subs all this with inverse_kin
         % relativeToObjectHandle = h_RCM defined upward
         [~, ee_position_relative]=vrep.simxGetObjectPosition(ID, h_j6, relativeToObjectHandle, vrep.simx_opmode_streaming);
@@ -360,8 +355,8 @@ while ~sync
      
     [~,~] = vrep.simxGetJointPosition(ID, h_RCM, vrep.simx_opmode_streaming);
     
-    [~, ee_position_relative]=vrep.simxGetObjectPosition(ID, h_j6, h_RCM, vrep.simx_opmode_streaming);
-    [~, ee_orientation_relative]=vrep.simxGetObjectOrientation(ID, h_j6, h_RCM, vrep.simx_opmode_streaming);
+    [~, ~]=vrep.simxGetObjectPosition(ID, h_j6, h_RCM, vrep.simx_opmode_streaming);
+    [~, ~]=vrep.simxGetObjectOrientation(ID, h_j6, h_RCM, vrep.simx_opmode_streaming);
 
     sync = norm(some,2)~=0;
 end

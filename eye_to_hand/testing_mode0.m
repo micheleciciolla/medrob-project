@@ -71,7 +71,7 @@ while spot < 6 % spots are 5
     
     if mode == 1
         
-        % TO BE COMPLETED
+        % TO BE COMPLETED - see testing_mode1
         
         break;
                 
@@ -100,7 +100,7 @@ while spot < 6 % spots are 5
         end
          
         % PLOT
-        if( mod(time,5)==0)
+        if( mod(time,8)==0)
             x = time/100;
             y = norm(err(1:3),2);
             % plot(x,y,'--b');

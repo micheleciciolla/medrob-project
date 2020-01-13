@@ -20,8 +20,9 @@ pause(2);
 
 % vision sensor
 [~, h_VS] =vrep.simxGetObjectHandle(ID, 'Vision_sensor_ECM', vrep.simx_opmode_blocking);
+
 % end effector
-[~, h_EE] =vrep.simxGetObjectHandle(ID, 'FollowedDummy', vrep.simx_opmode_blocking);
+% [~, h_EE] =vrep.simxGetObjectHandle(ID, 'EE', vrep.simx_opmode_blocking);
 
 % force sensor
 [~, h_FS]=vrep.simxGetObjectHandle(ID, 'Force_sensor', vrep.simx_opmode_blocking);
@@ -29,7 +30,7 @@ pause(2);
 % reference for direct kin
 [~, h_RCM]=vrep.simxGetObjectHandle(ID, 'RCM_PSM1', vrep.simx_opmode_blocking);
 
-% reference for direct kin
+% reference for direct kin 
 % first RRP joints
 [~, h_j1] = vrep.simxGetObjectHandle(ID,'J1_PSM1',vrep.simx_opmode_blocking);
 [~, h_j2] = vrep.simxGetObjectHandle(ID,'J2_PSM1',vrep.simx_opmode_blocking);
@@ -39,6 +40,7 @@ pause(2);
 [~, h_j4] = vrep.simxGetObjectHandle(ID,'J1_TOOL1',vrep.simx_opmode_blocking);
 [~, h_j5] = vrep.simxGetObjectHandle(ID,'J2_TOOL1',vrep.simx_opmode_blocking);
 [~, h_j6] = vrep.simxGetObjectHandle(ID,'J3_TOOL1',vrep.simx_opmode_blocking);
+
 
 % collection of all joint handles
 h_joints = [h_j1; h_j2; h_j3; h_j4; h_j5; h_j6];
@@ -249,14 +251,36 @@ while spot<6
         % this is the position of ee_pose wrt RCM frame
         % vs2rcm : relative position and orientation of RCM wrt VS
         ee_wrt_RCM = utils.getPoseInRCM(vs2rcm, ee_pose_VS);
-        
-        % it can be replaced by this because ee_wrt_RCM (prediction) and
-        % real ee_pose_RCM are very close.
+               
+        % (?) ro verify if my error is here
         [~, ee_position_RCM]=vrep.simxGetObjectPosition(ID, h_j6, h_RCM, vrep.simx_opmode_streaming);
         [~, ee_orientation_RCM]=vrep.simxGetObjectOrientation(ID, h_j6, h_RCM, vrep.simx_opmode_streaming);
+        
         ee_pose_RCM = [ee_position_RCM, ee_orientation_RCM]';
         
-        %__________________________________________________________________
+        % ee_wrt_RCM (obtained using hom. transf.) and
+        % real ee_pose_RCM are very close.
+        % Check this statement here below.
+        
+        % check of prediction:
+%         tranformation_err = utils.computeError(ee_pose_RCM,ee_wrt_RCM);
+%               
+%         % PLOT
+%         if( mod(time,10)==0)
+%             x = time/100;
+%             y = norm(tranformation_err(3:6),2);
+%             % plot(x,y,'--b');
+%             stem(x,y,'-b');
+%             % plot(prediction_err);
+%             hold on
+%             grid on
+%             ylim( [0 0.00001]);
+%             xlabel('time')
+%             ylabel('err')
+%             title('how bad is my prediction')
+%         end
+        
+       %__________________________________________________________________
         
         %	8) GETTING NEXT POSE WRT RCM
         %__________________________________________________________________

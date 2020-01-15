@@ -120,7 +120,7 @@ vs2rcm = [vs2rcm_position';vs2rcm_orientation'];
 %__________________________________________________________________________
 
 mode = 1;
-spot = 1;
+spot = 4;
 time = 0; % time costant useful for plot ecc.
 
 fprintf(2,'\n ******* STARTING ******* ');

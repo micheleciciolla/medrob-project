@@ -22,7 +22,7 @@ pause(2);
 [~, h_VS] =vrep.simxGetObjectHandle(ID, 'Vision_sensor_ECM', vrep.simx_opmode_blocking);
 
 % end effector
-% [~, h_EE] =vrep.simxGetObjectHandle(ID, 'EE', vrep.simx_opmode_blocking);
+[~, h_EE] =vrep.simxGetObjectHandle(ID, 'EE', vrep.simx_opmode_blocking);
 
 % force sensor
 [~, h_FS]=vrep.simxGetObjectHandle(ID, 'Force_sensor', vrep.simx_opmode_blocking);
@@ -41,11 +41,11 @@ pause(2);
 [~, h_j5] = vrep.simxGetObjectHandle(ID,'J2_TOOL1',vrep.simx_opmode_blocking);
 [~, h_j6] = vrep.simxGetObjectHandle(ID,'J3_TOOL1',vrep.simx_opmode_blocking);
 
-
 % collection of all joint handles
 h_joints = [h_j1; h_j2; h_j3; h_j4; h_j5; h_j6];
 
-[sync] = utils.syncronize(ID, vrep, h_joints, h_RCM, h_VS);
+sync = utils.syncronize(ID, vrep, h_joints, h_RCM, h_VS, h_EE);
+
 if sync
     fprintf(1,'Sycronization: OK... \n');
     pause(1);
@@ -108,7 +108,7 @@ end
 % null desired force and torque
 force_torque_d=zeros(6,1);
 
-% position and orientation of RCM wrt VS (should be costant)
+% position and orientation of RCM wrt VS (remains costant)
 % used in conversion of coordinates from VS to RCM
 [~, vs2rcm_position]=vrep.simxGetObjectPosition(ID, h_RCM ,h_VS, vrep.simx_opmode_streaming);
 [~, vs2rcm_orientation]=vrep.simxGetObjectOrientation(ID, h_RCM ,h_VS, vrep.simx_opmode_streaming);
@@ -119,8 +119,8 @@ vs2rcm = [vs2rcm_position';vs2rcm_orientation'];
 %	PROCESS LOOP
 %__________________________________________________________________________
 
-mode = 1;
-spot = 4;
+mode = 1; % servoing control
+spot = 1; % from which spot you start
 time = 0; % time costant useful for plot ecc.
 
 fprintf(2,'\n ******* STARTING ******* ');
@@ -210,8 +210,7 @@ while spot<6
         
         force_correction = L*C*(force_torque_d-force_torque);
         err_image = err_image + force_correction;
-        
-        
+               
         %__________________________________________________________________________
         
         %	4) COMPUTING DISPLACEMENT

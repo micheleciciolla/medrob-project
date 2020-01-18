@@ -6,7 +6,7 @@ clear;
 close all;
 clc;
 
-pause(3);
+pause(2);
 %%
 % CONNECTION TO VREP
 %%
@@ -17,16 +17,19 @@ pause(3);
 % COLLECTING HANDLES
 %%
 
+% end effector
+[~, h_EE]=vrep.simxGetObjectHandle(ID, 'FollowedDummy', vrep.simx_opmode_blocking);
+
 % vision sensor
-[~, h_VS]=vrep.simxGetObjectHandle(ID, 'Vision_sensor_ECM', vrep.simx_opmode_blocking);
+[~, h_VS] =vrep.simxGetObjectHandle(ID, 'Vision_sensor_ECM', vrep.simx_opmode_blocking);
 
 % force sensor
 [~, h_FS]=vrep.simxGetObjectHandle(ID, 'Force_sensor', vrep.simx_opmode_blocking);
 
-% end effector
-[~, h_EE]=vrep.simxGetObjectHandle(ID, 'FollowedDummy', vrep.simx_opmode_blocking);
-
 % reference for direct kin
+[~, h_RCM]=vrep.simxGetObjectHandle(ID, 'RCM_PSM1', vrep.simx_opmode_blocking);
+
+% reference for direct kin 
 % first RRP joints
 [~, h_j1] = vrep.simxGetObjectHandle(ID,'J1_PSM1',vrep.simx_opmode_blocking);
 [~, h_j2] = vrep.simxGetObjectHandle(ID,'J2_PSM1',vrep.simx_opmode_blocking);
@@ -37,22 +40,16 @@ pause(3);
 [~, h_j5] = vrep.simxGetObjectHandle(ID,'J2_TOOL1',vrep.simx_opmode_blocking);
 [~, h_j6] = vrep.simxGetObjectHandle(ID,'J3_TOOL1',vrep.simx_opmode_blocking);
 
-% grippers (not used atm)
-[~, h_7sx] = vrep.simxGetObjectHandle(ID,'J3_sx_TOOL1',vrep.simx_opmode_blocking);
-[~, h_7dx] = vrep.simxGetObjectHandle(ID,'J3_dx_TOOL1',vrep.simx_opmode_blocking);
+relativeToObjectHandle = h_RCM;
 
-% reference for direct kin
-[~, h_RCM]=vrep.simxGetObjectHandle(ID, 'RCM_PSM1', vrep.simx_opmode_blocking);
+% collection of all joint handles
+h_joints = [h_j1; h_j2; h_j3; h_j4; h_j5; h_j6];
 
-
-relativeToObjectHandle = h_RCM; % relative to which frame you want to know position of ee
-
-[sync] = syncronize( ID , vrep, h_j1, h_j2, h_j3, h_j4, h_j5, h_j6, h_7sx, h_7dx, h_RCM);
+[sync] = utils.syncronize(ID, vrep, h_joints, h_RCM, h_VS);
 if sync
     fprintf(1,'Sycronization: OK... \n');
     pause(1);
 end
-
 
 % preallocating for speed
 h_L = zeros(4,5); % here i save handles of landmarks
@@ -84,7 +81,7 @@ end
 fl = 0.01;
 
 % control gain in mode 0 (see below)
-K = eye(6)*(10^-2);
+K = eye(6)*(10^-2)*1.5;
 
 % control gain in mode 1 (see below)
 H = eye(6)*(10^-1)*2;
@@ -117,7 +114,7 @@ end
 force_torque_d=zeros(6,1);
 
 % end effector home pose (THIS NEEDS TO BE CORRECTED)
-ee_pose_d=[ -1.5413e+0;   -4.0699e-2;    +7.2534e-1;  -1.80e+2;         0;         0];
+ee_pose_d = [ -1.5413e+0;   -4.0699e-2;    +7.2534e-1;  -1.80e+2;         0;         0];
 home_pose = [ 0.09 0.035 -0.0938 -1.458 -0.586 0.7929]; % this is the one wrt rcm (used for inverse kin);
 
 %%
@@ -142,6 +139,12 @@ mode = 0;
 
 % mode 1 is just a Cartesian proportionale regulator
 
+% position and orientation of RCM wrt VS (should be costant)
+% used in conversion of coordinates from VS to RCM
+[~, vs2rcm_position]=vrep.simxGetObjectPosition(ID, h_RCM ,h_VS, vrep.simx_opmode_streaming);
+[~, vs2rcm_orientation]=vrep.simxGetObjectOrientation(ID, h_RCM ,h_VS, vrep.simx_opmode_streaming);
+vs2rcm = [vs2rcm_position';vs2rcm_orientation'];
+
 %start from landmark at spot+1
 spot = 0;
 
@@ -150,10 +153,11 @@ spot = 0;
 fprintf(2,'******* STARTING ******* \n');
 
 time = 0; % time variable, useful for plot ecc.
+figure();
 while spot<6
     
     if mode==1
-        
+                
         %%
         %	I) FEATURES and DEPTH EXTRACTION
         %%
@@ -202,7 +206,7 @@ while spot<6
         
         % evaluating exit condition
         if norm(err,2)<=10^-4
-           if spot==5 % last spot
+           if spot==4 % last spot
                break;
            end
            mode=0;
@@ -259,14 +263,43 @@ while spot<6
         
         ee_pose_VS= [ee_position_VS, ee_orientation_VS]'; 
        
-        % updating the pose
-        next_ee_pose_VS= ee_pose_VS + ee_displacement;
- 
-        [~]= vrep.simxSetObjectPosition(ID, h_EE, h_VS, next_ee_pose_VS(1:3), vrep.simx_opmode_oneshot);
-        [~]= vrep.simxSetObjectOrientation(ID, h_EE, h_VS, next_ee_pose_VS(4:6), vrep.simx_opmode_oneshot);
+        % getting the new pose
+        next_ee_pose_VS = ee_pose_VS + ee_displacement;
         
-        %__________________________________________________________________
-        %__________________________________________________________________
+        % sending new pose of dummy attached to EE wrt VS
+        
+        % [~]= vrep.simxSetObjectPosition(ID, h_EE, h_VS, next_ee_pose_VS(1:3), vrep.simx_opmode_oneshot);
+        % [~]= vrep.simxSetObjectOrientation(ID, h_EE, h_VS, next_ee_pose_VS(4:6), vrep.simx_opmode_oneshot);
+        
+        % getting next pose wrt RCM
+        next_ee_wrt_RCM = utils.getPoseInRCM(vs2rcm, next_ee_pose_VS);
+        
+        % sending new pose of dummy attached to EE wrt RCM
+        [~]= vrep.simxSetObjectPosition(ID, h_EE, h_RCM, next_ee_wrt_RCM(1:3), vrep.simx_opmode_oneshot);
+        [~]= vrep.simxSetObjectOrientation(ID, h_EE, h_RCM, next_ee_wrt_RCM(4:6), vrep.simx_opmode_oneshot);
+        
+        % PLOT
+        if( mod(time,40)==0)
+            
+            if(spot==1) color = '.r';
+            elseif spot==2 color = '.b';
+            elseif spot==3 color = '.k';
+            elseif spot==4 color = '.g';
+            elseif spot==5 color = '.m';
+            elseif spot==6 color = '.y';
+                % elseif spot==1 color = '.b';
+            end
+            
+            scatter3( next_ee_wrt_RCM(1),next_ee_wrt_RCM(2),next_ee_wrt_RCM(3), color)
+            
+            hold on
+            grid on
+            
+            title('EE position')
+        end
+               
+        %____________________________________________________________________________________________________________________________________
+        %____________________________________________________________________________________________________________________________________
         
     elseif mode==0
                 
@@ -307,12 +340,10 @@ while spot<6
            time = 0;
            continue;
         end
-        
-        
+              
         % computing the displacement
         ee_displacement = H*err;
         
-
         % updating the pose
         ee_pose_VS= ee_pose_VS + ee_displacement;
         [~]= vrep.simxSetObjectPosition(ID, h_EE, -1, ee_pose_VS(1:3), vrep.simx_opmode_oneshot);
@@ -323,42 +354,4 @@ while spot<6
     pause(0.05);
 end
 
-fprintf(2,'**** PROCESS ENDED *****');
-
-%%
-%	UTILS FUNCTIONS
-%%
-
-
-function [sync]  = syncronize(ID , vrep, h_j1, h_j2, h_j3, h_j4, h_j5, h_j6, h_7sx, h_7dx, h_RCM)
-% to be prettyfied -> you will receive in input just (clientID , vrep, handles)
-% h_EE = handles(1)
-% h_j1_PSM = handles(2)
-% ...
-
-% used to wait to receive non zero values from vrep model
-% usually matlab and vrep need few seconds to send valid values
-
-sync = false;
-
-while ~sync
-    % i dont need them all, just one to check non-zero returning values 
-    [~,~] = vrep.simxGetJointPosition(ID, h_j1, vrep.simx_opmode_streaming);
-    [~,~] = vrep.simxGetJointPosition(ID, h_j2, vrep.simx_opmode_streaming);
-    [~,~] = vrep.simxGetJointPosition(ID, h_j3, vrep.simx_opmode_streaming);
-    [~,~] = vrep.simxGetJointPosition(ID, h_j4, vrep.simx_opmode_streaming);
-    [~,~] = vrep.simxGetJointPosition(ID, h_j5, vrep.simx_opmode_streaming);
-    [~,some]=vrep.simxGetJointPosition(ID,h_j6,vrep.simx_opmode_streaming);
-       
-    [~,~] = vrep.simxGetJointPosition(ID, h_7sx, vrep.simx_opmode_streaming);
-    [~,~] = vrep.simxGetJointPosition(ID, h_7dx, vrep.simx_opmode_streaming);
-     
-    [~,~] = vrep.simxGetJointPosition(ID, h_RCM, vrep.simx_opmode_streaming);
-    
-    [~, ~]=vrep.simxGetObjectPosition(ID, h_j6, h_RCM, vrep.simx_opmode_streaming);
-    [~, ~]=vrep.simxGetObjectOrientation(ID, h_j6, h_RCM, vrep.simx_opmode_streaming);
-
-    sync = norm(some,2)~=0;
-end
-
-end
+fprintf(2,'**** PROCESS ENDED ***** \n');

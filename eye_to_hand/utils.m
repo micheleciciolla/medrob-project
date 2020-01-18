@@ -23,7 +23,7 @@ classdef utils
         end
         
         
-        function [sync]  = syncronize(ID , vrep, h_joints, h_RCM, h_VS)
+        function [sync]  = syncronize(ID, vrep, h_joints, h_RCM, h_VS, h_EE)
       
             % used to wait to receive non zero values from vrep model
             % usually matlab and vrep need few seconds to send valid values
@@ -48,6 +48,14 @@ classdef utils
                 % syncronizing position of joint 6 wrt VS
                 [~, ~]=vrep.simxGetObjectPosition(ID, h_joints(6), h_VS, vrep.simx_opmode_streaming);
                 [~, ~]=vrep.simxGetObjectOrientation(ID, h_joints(6), h_VS, vrep.simx_opmode_streaming);
+                
+                % syncronizing position of EE handle wrt VS
+                [~, ~]=vrep.simxGetObjectPosition(ID, h_EE, h_VS, vrep.simx_opmode_streaming);
+                [~, ~]=vrep.simxGetObjectOrientation(ID, h_EE, h_VS, vrep.simx_opmode_streaming);
+                % syncronizing position of EE handle wrt RCM
+                [~, ~]=vrep.simxGetObjectPosition(ID, h_EE, h_RCM, vrep.simx_opmode_streaming);
+                [~, ~]=vrep.simxGetObjectOrientation(ID, h_EE, h_RCM, vrep.simx_opmode_streaming);
+                             
                 sync = norm(v2,2)~=0;
             end
             

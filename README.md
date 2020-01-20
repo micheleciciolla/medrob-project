@@ -7,7 +7,7 @@ Final Project for Medical Robotics course 2018-2019, Università La Sapienza Rom
 ## Approach
 We started working on a implementation made by other students from Medical Robs course. Our task is to upgrade and implement with new features:
 
-  * Parameters tuning <a><img src="https://media.istockphoto.com/vectors/done-icon-simple-flat-web-navigation-sign-vector-id992705762?k=6&m=992705762&s=170667a&w=0&h=ZiGi12O-8UaKNM_kfAkiCyvF8I9XgiCxUoivt0ruoQg=" width="20"></a>
+  * Parameters tuning <a><img src="https://media.istockphoto.com/vectors/done-icon-simple-flat-web-navigation-sign-vector-id992705762?k=6&m=992705762&s=170667a&w=0&h=ZiGi12O-8UaKNM_kfAkiCyvF8I9XgiCxUoivt0ruoQg=" width="30"></a>
   
   * Usage of Inverse Kinematics instead of vrep functions <a><img src="https://cdn3.iconfinder.com/data/icons/basicolor-arrows-checks/24/159_check_no_done_checkbox-512.png" width="20"></a>
   

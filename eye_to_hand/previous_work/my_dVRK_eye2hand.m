@@ -45,7 +45,7 @@ relativeToObjectHandle = h_RCM;
 % collection of all joint handles
 h_joints = [h_j1; h_j2; h_j3; h_j4; h_j5; h_j6];
 
-[sync] = utils.syncronize(ID, vrep, h_joints, h_RCM, h_VS);
+[sync] = utils.syncronize(ID, vrep, h_joints, h_RCM, h_VS,h_EE);
 if sync
     fprintf(1,'Sycronization: OK... \n');
     pause(1);

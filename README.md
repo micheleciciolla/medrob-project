@@ -5,14 +5,8 @@ Final Project for Medical Robotics course 2018-2019, Università La Sapienza Rom
 <a href="https://www.dis.uniroma1.it/"><img src="http://www.dis.uniroma1.it/sites/default/files/marchio%20logo%20eng%20jpg.jpg" width="300"></a>
 
 ## Approach
-We started working on a implementation made by other students from Medical Robs course. Our task is to upgrade and implement with new features:
+We started working on a implementation made by other students from Medical Robs course. Our task is to upgrade and implement new features.
 
-  * Parameters tuning <a><img src="https://media.istockphoto.com/vectors/done-icon-simple-flat-web-navigation-sign-vector-id992705762?k=6&m=992705762&s=170667a&w=0&h=ZiGi12O-8UaKNM_kfAkiCyvF8I9XgiCxUoivt0ruoQg=" width="30"></a>
-  
-  * Usage of Inverse Kinematics instead of vrep functions <a><img src="https://cdn3.iconfinder.com/data/icons/basicolor-arrows-checks/24/159_check_no_done_checkbox-512.png" width="20"></a>
-  
-  * EE tracking using ECM 
-  
 ## Demo (to-do)
 Click here for the DEMO VERSION: [to-do]
 

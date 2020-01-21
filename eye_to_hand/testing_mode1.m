@@ -123,9 +123,12 @@ mode = 1; % servoing control
 spot = 1; % from which spot you start
 time = 0; % time costant useful for plot ecc.
 
-fprintf(2,'\n ******* STARTING ******* ');
+fprintf(2,'\n ******* STARTING ******* \n');
 
-Q = zeros(6,1);
+% % starting from zero config
+% Q = zeros(6,1);
+% kinematicsRCM.setJoints(ID, vrep, h_joints, Q);
+% pause();
 
 while spot<6
     
@@ -139,8 +142,7 @@ while spot<6
         
         %	1) FEATURE EXTRACTION
         %__________________________________________________________________________
-        
-        
+                
         us_ee = zeros(4,1);
         vs_ee = zeros(4,1);
         zs_ee = zeros(4,1);
@@ -229,8 +231,8 @@ while spot<6
         %__________________________________________________________________
         
         % getting the current pose wrt VS
-        [~, ee_position_VS] = vrep.simxGetObjectPosition(ID, h_j6, h_VS, vrep.simx_opmode_streaming);
-        [~, ee_orientation_VS] = vrep.simxGetObjectOrientation(ID, h_j6, h_VS, vrep.simx_opmode_streaming);
+        [~, ee_position_VS] = vrep.simxGetObjectPosition(ID, h_EE, h_VS, vrep.simx_opmode_streaming);
+        [~, ee_orientation_VS] = vrep.simxGetObjectOrientation(ID, h_EE, h_VS, vrep.simx_opmode_streaming);
         
         ee_pose_VS = [ee_position_VS, ee_orientation_VS]';
         
@@ -252,9 +254,9 @@ while spot<6
         ee_wrt_RCM = utils.getPoseInRCM(vs2rcm, ee_pose_VS);
                
         % (?) ro verify if my error is here
-        [~, ee_position_RCM]=vrep.simxGetObjectPosition(ID, h_j6, h_RCM, vrep.simx_opmode_streaming);
-        [~, ee_orientation_RCM]=vrep.simxGetObjectOrientation(ID, h_j6, h_RCM, vrep.simx_opmode_streaming);
-        
+        [~, ee_position_RCM]=vrep.simxGetObjectPosition(ID, h_EE, h_RCM, vrep.simx_opmode_streaming);
+        [~, ee_orientation_RCM]=vrep.simxGetObjectOrientation(ID, h_EE, h_RCM, vrep.simx_opmode_streaming);
+        % just used to check if transformation is good
         ee_pose_RCM = [ee_position_RCM, ee_orientation_RCM]';
         
         % ee_wrt_RCM (obtained using hom. transf.) and
@@ -292,7 +294,7 @@ while spot<6
         %	9) COMPUTING ERROR WRT RCM
         %__________________________________________________________________
         
-        error_rcm = utils.computeError(next_ee_wrt_RCM, ee_wrt_RCM);
+        error_RCM = utils.computeError(next_ee_wrt_RCM, ee_wrt_RCM);
         
         %__________________________________________________________________
         
@@ -300,12 +302,29 @@ while spot<6
         %__________________________________________________________________
         
         % computing the new configuration via inverse inverse kinematics
-        Q_new = kinematicsRCM.inverse_kinematics(Q, error_rcm, mode);
+        Q_new = kinematicsRCM.inverse_kinematics(Q, error_RCM, mode);
         
         % sending to joints
         kinematicsRCM.setJoints(ID, vrep, h_joints, Q_new);
         
         %__________________________________________________________________
+        
+               
+        % PLOT IMAGE PLANE
+        if( mod(time,10)==0)
+            
+            % plotting current position
+            plot = scatter( [us_ee(1), us_ee(2), us_ee(3), us_ee(4)],...
+                [vs_ee(1), vs_ee(2), vs_ee(3), vs_ee(4)], '*','k');
+            
+            % plotting desired position
+            plot = scatter( [us_desired(1), us_desired(2), us_desired(3), us_desired(4) ],...
+                [vs_desired(1), vs_desired(2), vs_desired(3), vs_desired(4)], 'r', 'o','filled');
+                
+            hold on
+            grid on           
+            title('image error convergence')
+        end
         
     elseif mode==0
         
@@ -314,4 +333,4 @@ while spot<6
     pause(0.05);
 end
 
-fprintf(2,' \n **** PROCESS ENDED *****');
+fprintf(2,' \n **** PROCESS ENDED ***** \n');

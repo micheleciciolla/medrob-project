@@ -27,7 +27,7 @@ pause(3);
 % reference for direct kin
 [~, h_RCM]=vrep.simxGetObjectHandle(ID, 'RCM_PSM1', vrep.simx_opmode_blocking);
 
-% reference for direct kin 
+% reference for direct kin
 % first RRP joints
 [~, h_j1] = vrep.simxGetObjectHandle(ID,'J1_PSM1',vrep.simx_opmode_blocking);
 [~, h_j2] = vrep.simxGetObjectHandle(ID,'J2_PSM1',vrep.simx_opmode_blocking);
@@ -48,60 +48,44 @@ if sync
     pause(1);
 end
 
-% end effector home pose
-home_pose =[ 0.2245
-    0.0315
-    -0.1934
-    -1.5702
-    -0.3370
-    0.7288]; % this is the one wrt rcm
+% end effector home pose wrt rcm
+home_pose =[ 0.2245; 0.0315; -0.1934; 0.2 ; 0; rad2deg(45)];
 
 mode = 0;
 spot = 0;
 time = 0;
 figure();
 
-fprintf(2,'\n ******* STARTING ******* ');
+fprintf(2,'\n ******* STARTING ******* \n');
 
-[~, pos] = vrep.simxGetObjectPosition(ID, h_EE, h_VS, vrep.simx_opmode_streaming);
-[~, orient] = vrep.simxGetObjectOrientation(ID, h_EE, h_VS, vrep.simx_opmode_streaming);
+%
+% home_pose_VS = [-0.0749
+%     -0.1330
+%     0.1613
+%     -2.1745
+%     -0.6274
+%     2.9421];
+%
+% % position and orientation of RCM wrt VS (remains costant)
+% % used in conversion of coordinates from VS to RCM
+% [~, vs2rcm_position]=vrep.simxGetObjectPosition(ID, h_RCM ,h_VS, vrep.simx_opmode_streaming);
+% [~, vs2rcm_orientation]=vrep.simxGetObjectOrientation(ID, h_RCM ,h_VS, vrep.simx_opmode_streaming);
+% vs2rcm = [vs2rcm_position';vs2rcm_orientation'];
+%
+% home_pose = utils.getPoseInRCM(vs2rcm,home_pose_VS);
 
-home_pose_VS = [-0.0749
-   -0.1330
-    0.1613
-   -2.1745
-   -0.6274
-    2.9421];
-
-% position and orientation of RCM wrt VS (remains costant)
-% used in conversion of coordinates from VS to RCM
-[~, vs2rcm_position]=vrep.simxGetObjectPosition(ID, h_RCM ,h_VS, vrep.simx_opmode_streaming);
-[~, vs2rcm_orientation]=vrep.simxGetObjectOrientation(ID, h_RCM ,h_VS, vrep.simx_opmode_streaming);
-vs2rcm = [vs2rcm_position';vs2rcm_orientation'];
-
-home_pose = utils.getPoseInRCM(vs2rcm,home_pose_VS);
-  
-  
 while spot < 6 % spots are 5
     
     time = time +1;
     
     Q = kinematicsRCM.getJoints(ID, vrep, h_joints);
     
-    
-    if mode == 1
+    if mode == 0
         
-        % TO BE COMPLETED - see testing_mode1
+        % 1) READ CURRENT POSE OF joint 6 or h_EE wrt RCM frame
         
-        break;
-        
-        
-    elseif mode == 0
-        
-        % 1) READ CURRENT POSE OF joint 6 wrt RCM frame
-        
-        [~, ee_position]=vrep.simxGetObjectPosition(ID, h_j6, h_RCM, vrep.simx_opmode_streaming);
-        [~, ee_orientation]=vrep.simxGetObjectOrientation(ID, h_j6, h_RCM, vrep.simx_opmode_streaming);
+        [~, ee_position]=vrep.simxGetObjectPosition(ID, h_EE, h_RCM, vrep.simx_opmode_streaming);
+        [~, ee_orientation]=vrep.simxGetObjectOrientation(ID, h_EE, h_RCM, vrep.simx_opmode_streaming);
         
         ee_pose= [ee_position, ee_orientation]';
         
@@ -109,52 +93,13 @@ while spot < 6 % spots are 5
         err = utils.computeError(home_pose,ee_pose);
                 
         % 3) EVALUATE EXIT CONDITION (just on position)
-        if norm(err,2)< 10^-3
-            
+        if norm(err,2)< 10^-3           
             spot = spot+1;
             mode = 1;
             fprintf(1, 'GOING TOWARD SPOT : %d \n', spot);
             pause(1);
             
         end
-        
-                % PLOT
-                if( mod(time,8)==0)
-                    
-                    x = time/100;
-                    y = norm(err(4:6),2);
-                    % plot(x,y,'--b');
-                    subplot(2,1,1)
-                    stem(x,y,'-k');                    
-                    ylim( [0 0.25]);
-                    xlabel('time')
-                    ylabel('norm error')
-                    title('Orientation error')
-                    hold on
-                    grid on
-                    
-                    subplot(2,1,2)
-                    y1 = norm(err(1:3),2);
-                    stem(x,y1,'-k');                    
-                    ylim( [0 0.25]);
-                    xlabel('time')
-                    ylabel('norm error')
-                    title('Position error')
-                    hold on
-                    grid on
-                    
-                end
-        
-%         % PLOT
-%         if( mod(time,30)==0)
-%             
-%             scatter3( ee_position(1),ee_position(2),ee_position(3), '.b')
-%             
-%             hold on
-%             grid on
-%             
-%             title('EE position')
-%         end
         
         % 4) CORRECT AND UPDATE POSE
         
@@ -171,12 +116,46 @@ while spot < 6 % spots are 5
         
         pause(0.01);
         
+        % PLOT
+        if( mod(time,8)==0)
+            
+            x = time/100;
+            y = norm(err(4:6),2);
+            % plot(x,y,'--b');
+            subplot(2,1,1)
+            stem(x,y,'-k');
+            ylim( [0 0.5]);
+            xlabel('time')
+            ylabel('norm error')
+            title('Orientation error')
+            hold on
+            grid on
+            
+            subplot(2,1,2)
+            y1 = norm(err(1:3),2);
+            stem(x,y1,'-k');
+            ylim( [0 0.25]);
+            xlabel('time')
+            ylabel('norm error')
+            title('Position error')
+            hold on
+            grid on
+            
+        end
+        
+    elseif mode == 1
+        break;
     end
 end
 
-fprintf(2,' \n **** PROCESS ENDED *****');
+fprintf(2,' \n **** PROCESS ENDED ***** \n');
 disp("final pose :");
 disp(ee_pose);
 
 disp("direct kin position :");
 disp(kinematicsRCM.direct_kinematics(Q));
+
+disp("absolute difference % :");
+diff100 = ( kinematicsRCM.direct_kinematics(Q) - ee_pose(1:3) )*100;
+diff100 = round( diff100, 3);
+disp(abs(diff100));

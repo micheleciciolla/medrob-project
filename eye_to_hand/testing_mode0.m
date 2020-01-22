@@ -49,7 +49,6 @@ if sync
 end
 
 % end effector home pose wrt rcm
-home_pose =[ 0.2245; 0.0315; -0.1934; 0.2 ; 0; rad2deg(45)];
 
 mode = 0;
 spot = 0;
@@ -73,6 +72,9 @@ fprintf(2,'\n ******* STARTING ******* \n');
 % vs2rcm = [vs2rcm_position';vs2rcm_orientation'];
 %
 % home_pose = utils.getPoseInRCM(vs2rcm,home_pose_VS);
+
+home_pose = [ 0.2245; 0.0315; -0.1934; 0 ; 0.2 ; 3.14/2 ];
+% home_pose = [ 0; 0; -0.1934; 0 ; 0 ; 0 ];
 
 while spot < 6 % spots are 5
     

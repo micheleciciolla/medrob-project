@@ -45,7 +45,7 @@ relativeToObjectHandle = h_RCM;
 % collection of all joint handles
 h_joints = [h_j1; h_j2; h_j3; h_j4; h_j5; h_j6];
 
-[sync] = utils.syncronize(ID, vrep, h_joints, h_RCM, h_VS,h_EE);
+[sync] = utils.syncronize(ID, vrep, h_joints, h_RCM, h_VS, h_EE);
 if sync
     fprintf(1,'Sycronization: OK... \n');
     pause(1);
@@ -80,10 +80,10 @@ end
 % focal length (depth of the near clipping plane)
 fl = 0.01;
 
-% control gain in mode 0 (see below)
+% control gain in mode 1 (see below)
 K = eye(6)*(10^-2)*1.5;
 
-% control gain in mode 1 (see below)
+% control gain in mode 0 (see below)
 H = eye(6)*(10^-1)*2;
 
 % compliance matrix of manipulator
@@ -162,9 +162,9 @@ while spot<6
         %	I) FEATURES and DEPTH EXTRACTION
         %%
 
-        us_current = zeros(4,1);
-        vs_currect = zeros(4,1);
-        zs_current = zeros(4,1);
+        us_ee = zeros(4,1);
+        vs_ee = zeros(4,1);
+        zs_ee = zeros(4,1);
         
         % GETTING CURRECT POSITION OF EE IN IMAGE PLANE
         for b=1:4 % ee_balls
@@ -174,9 +174,9 @@ while spot<6
             end
             sync=false;
            
-            zs_current(b)= l_position(3);
-            us_current(b)= fl*l_position(1)/l_position(3);
-            vs_currect(b)= fl*l_position(2)/l_position(3);
+            zs_ee(b)= l_position(3);
+            us_ee(b)= fl*l_position(1)/l_position(3);
+            vs_ee(b)= fl*l_position(2)/l_position(3);
             
         end
         
@@ -187,32 +187,36 @@ while spot<6
         %%
         
         % building the jacobian
-        L = [ utils.build_point_jacobian(us_current(1),vs_currect(1),zs_current(1),fl); ...
-              utils.build_point_jacobian(us_current(2),vs_currect(2),zs_current(2),fl); ...
-              utils.build_point_jacobian(us_current(3),vs_currect(3),zs_current(3),fl); ...
-              utils.build_point_jacobian(us_current(4),vs_currect(4),zs_current(4),fl)]; 
+        L = [ utils.build_point_jacobian(us_ee(1),vs_ee(1),zs_ee(1),fl); ...
+              utils.build_point_jacobian(us_ee(2),vs_ee(2),zs_ee(2),fl); ...
+              utils.build_point_jacobian(us_ee(3),vs_ee(3),zs_ee(3),fl); ...
+              utils.build_point_jacobian(us_ee(4),vs_ee(4),zs_ee(4),fl)]; 
         
         % computing the error
-        err= [us_desired(1,spot)-us_current(1); ...
-              vs_desired(1,spot)-vs_currect(1); ...
-              us_desired(2,spot)-us_current(2); ...
-              vs_desired(2,spot)-vs_currect(2); ...
-              us_desired(3,spot)-us_current(3); ...
-              vs_desired(3,spot)-vs_currect(3); ...
-              us_desired(4,spot)-us_current(4); ...
-              vs_desired(4,spot)-vs_currect(4)];
+        err= [us_desired(1,spot)-us_ee(1); ...
+              vs_desired(1,spot)-vs_ee(1); ...
+              us_desired(2,spot)-us_ee(2); ...
+              vs_desired(2,spot)-vs_ee(2); ...
+              us_desired(3,spot)-us_ee(3); ...
+              vs_desired(3,spot)-vs_ee(3); ...
+              us_desired(4,spot)-us_ee(4); ...
+              vs_desired(4,spot)-vs_ee(4)];
         
         % norm(err,2)
         
         % evaluating exit condition
         if norm(err,2)<=10^-4
-           if spot==4 % last spot
-               break;
-           end
-           mode=0;
-           pause(2);
-           disp("---------- OK ----------");
-           continue;
+            if spot==4 % last spot
+                break;
+            end
+            mode=0;       
+            
+            disp("---------- OK ----------");
+            disp("--------- CLICK --------");
+
+            pause();
+            close
+            continue;
         end
         %
         
@@ -281,21 +285,39 @@ while spot<6
         % PLOT
         if( mod(time,40)==0)
             
-            if(spot==1) color = '.r';
-            elseif spot==2 color = '.b';
-            elseif spot==3 color = '.k';
-            elseif spot==4 color = '.g';
-            elseif spot==5 color = '.m';
-            elseif spot==6 color = '.y';
+            subplot(2,1,1)
+            if(spot==1) color = 'r';
+            elseif spot==2 color = 'b';
+            elseif spot==3 color = 'k';
+            elseif spot==4 color = 'g';
+            elseif spot==5 color = 'm';
+            elseif spot==6 color = 'y';
                 % elseif spot==1 color = '.b';
             end
             
-            scatter3( next_ee_wrt_RCM(1),next_ee_wrt_RCM(2),next_ee_wrt_RCM(3), color)
+            scatter3( next_ee_wrt_RCM(1),next_ee_wrt_RCM(2),next_ee_wrt_RCM(3),'o',color)
             
             hold on
             grid on
             
             title('EE position')
+            
+            subplot(2,1,2)
+            
+            % plotting current position
+            plot = scatter( [us_ee(1), us_ee(2), us_ee(3), us_ee(4)],...
+                [vs_ee(1), vs_ee(2), vs_ee(3), vs_ee(4)], '*','k');
+            
+            % plotting desired position
+            plot = scatter( [us_desired(1,spot), us_desired(2,spot), us_desired(3,spot), us_desired(4,spot) ],...
+                [vs_desired(1,spot), vs_desired(2,spot), vs_desired(3,spot), vs_desired(4,spot)], 'r', 'o','filled');
+            
+            hold on
+            grid on
+            title('image error convergence')
+            
+            
+     
         end
                
         %____________________________________________________________________________________________________________________________________

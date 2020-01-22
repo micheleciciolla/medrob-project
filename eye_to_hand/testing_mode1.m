@@ -30,7 +30,7 @@ pause(2);
 % reference for direct kin
 [~, h_RCM]=vrep.simxGetObjectHandle(ID, 'RCM_PSM1', vrep.simx_opmode_blocking);
 
-% reference for direct kin 
+% reference for direct kin
 % first RRP joints
 [~, h_j1] = vrep.simxGetObjectHandle(ID,'J1_PSM1',vrep.simx_opmode_blocking);
 [~, h_j2] = vrep.simxGetObjectHandle(ID,'J2_PSM1',vrep.simx_opmode_blocking);
@@ -142,7 +142,7 @@ while spot<6
         
         %	1) FEATURE EXTRACTION
         %__________________________________________________________________________
-                
+        
         us_ee = zeros(4,1);
         vs_ee = zeros(4,1);
         zs_ee = zeros(4,1);
@@ -160,14 +160,12 @@ while spot<6
             vs_ee(b)= fl*l_position(2)/l_position(3);
             
         end
-        
-        
+                
         %__________________________________________________________________________
         
         %	2) COMPUTING INTERACTION MATRIX AND COMPUTING IMAGE ERROR
         %__________________________________________________________________________
-        
-        
+                
         % building the jacobian
         L = [ utils.build_point_jacobian(us_ee(1),vs_ee(1),zs_ee(1),fl); ...
             utils.build_point_jacobian(us_ee(2),vs_ee(2),zs_ee(2),fl); ...
@@ -199,8 +197,7 @@ while spot<6
         
         %	3) CORRECTING THE ERROR VIA FORCE FEEDBACK (null when no force)
         %__________________________________________________________________________
-        
-        
+                
         while ~sync
             [~, ~, force, torque]=vrep.simxReadForceSensor(ID, h_FS, vrep.simx_opmode_streaming);
             sync = true; %norm(force,2)~=0;
@@ -212,7 +209,7 @@ while spot<6
         
         force_correction = L*C*(force_torque_d-force_torque);
         err_image = err_image + force_correction;
-               
+        
         %__________________________________________________________________________
         
         %	4) COMPUTING DISPLACEMENT
@@ -252,10 +249,10 @@ while spot<6
         % this is the position of ee_pose wrt RCM frame
         % vs2rcm : relative position and orientation of RCM wrt VS
         ee_wrt_RCM = utils.getPoseInRCM(vs2rcm, ee_pose_VS);
-               
-        % (?) ro verify if my error is here
+        
         [~, ee_position_RCM]=vrep.simxGetObjectPosition(ID, h_EE, h_RCM, vrep.simx_opmode_streaming);
         [~, ee_orientation_RCM]=vrep.simxGetObjectOrientation(ID, h_EE, h_RCM, vrep.simx_opmode_streaming);
+        
         % just used to check if transformation is good
         ee_pose_RCM = [ee_position_RCM, ee_orientation_RCM]';
         
@@ -264,24 +261,24 @@ while spot<6
         % Check this statement here below.
         
         % check of prediction:
-%         tranformation_err = utils.computeError(ee_pose_RCM,ee_wrt_RCM);
-%               
-%         % PLOT
-%         if( mod(time,10)==0)
-%             x = time/100;
-%             y = norm(tranformation_err(3:6),2);
-%             % plot(x,y,'--b');
-%             stem(x,y,'-b');
-%             % plot(prediction_err);
-%             hold on
-%             grid on
-%             ylim( [0 0.00001]);
-%             xlabel('time')
-%             ylabel('err')
-%             title('how bad is my prediction')
-%         end
+        %         tranformation_err = utils.computeError(ee_pose_RCM,ee_wrt_RCM);
+        %
+        %         % PLOT
+        %         if( mod(time,10)==0)
+        %             x = time/100;
+        %             y = norm(tranformation_err(3:6),2);
+        %             % plot(x,y,'--b');
+        %             stem(x,y,'-b');
+        %             % plot(prediction_err);
+        %             hold on
+        %             grid on
+        %             ylim( [0 0.00001]);
+        %             xlabel('time')
+        %             ylabel('err')
+        %             title('how bad is my prediction')
+        %         end
         
-       %__________________________________________________________________
+        %__________________________________________________________________
         
         %	8) GETTING NEXT POSE WRT RCM
         %__________________________________________________________________
@@ -308,8 +305,7 @@ while spot<6
         kinematicsRCM.setJoints(ID, vrep, h_joints, Q_new);
         
         %__________________________________________________________________
-        
-               
+                
         % PLOT IMAGE PLANE
         if( mod(time,10)==0)
             
@@ -320,15 +316,16 @@ while spot<6
             % plotting desired position
             plot = scatter( [us_desired(1), us_desired(2), us_desired(3), us_desired(4) ],...
                 [vs_desired(1), vs_desired(2), vs_desired(3), vs_desired(4)], 'r', 'o','filled');
-                
+            
             hold on
-            grid on           
+            grid on
             title('image error convergence')
         end
         
     elseif mode==0
         
         % see testing_mode0
+        break
     end
     pause(0.05);
 end

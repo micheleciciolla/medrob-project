@@ -20,6 +20,7 @@ pause(2);
 
 % vision sensor
 [~, h_VS] =vrep.simxGetObjectHandle(ID, 'Vision_sensor_ECM', vrep.simx_opmode_blocking);
+[~, resolution, image] = vrep.simxGetVisionSensorImage(ID, h_VS, 0, vrep.simx_opmode_streaming);
 
 % end effector
 [~, h_EE] =vrep.simxGetObjectHandle(ID, 'EE', vrep.simx_opmode_blocking);
@@ -309,9 +310,10 @@ while spot<6
         % PLOT IMAGE PLANE
         if( mod(time,10)==0)
             
+            subplot(2,1,1)
             % plotting current position
             plot = scatter( [us_ee(1), us_ee(2), us_ee(3), us_ee(4)],...
-                [vs_ee(1), vs_ee(2), vs_ee(3), vs_ee(4)], '*','k');
+                [vs_ee(1), vs_ee(2), vs_ee(3), vs_ee(4)], 'o','k');
             
             % plotting desired position
             plot = scatter( [us_desired(1), us_desired(2), us_desired(3), us_desired(4) ],...
@@ -320,6 +322,11 @@ while spot<6
             hold on
             grid on
             title('image error convergence')
+            
+            subplot(2,1,2)
+            [~, resolution, image] = vrep.simxGetVisionSensorImage(ID, h_VS, 0, vrep.simx_opmode_buffer);
+            imshow(image);
+
         end
         
     elseif mode==0

@@ -12,7 +12,7 @@ classdef utils
             fprintf(1,'START...  \n');
             vrep=remApi('remoteApi'); % using the prototype file (remoteApiProto.m)
             vrep.simxFinish(-1); % just in case, close all opened connections
-            clientID=vrep.simxStart('127.0.0.1',19999,true,true,5000,5);
+            clientID=vrep.simxStart('127.0.0.1',19997,true,true,5000,5);
             fprintf(1,'client %d\n', clientID);
             if (clientID > -1)
                 fprintf(1,'Connection: OK... \n');

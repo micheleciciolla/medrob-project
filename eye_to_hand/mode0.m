@@ -21,6 +21,9 @@ pause(3);
 % end effector
 [~, h_EE] =vrep.simxGetObjectHandle(ID, 'EE', vrep.simx_opmode_blocking);
 
+% end effector
+[~, h_Followed] =vrep.simxGetObjectHandle(ID, 'FollowedDummy', vrep.simx_opmode_blocking);
+
 % force sensor
 [~, h_FS]=vrep.simxGetObjectHandle(ID, 'Force_sensor', vrep.simx_opmode_blocking);
 

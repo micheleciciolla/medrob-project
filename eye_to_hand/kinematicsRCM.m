@@ -53,7 +53,7 @@ classdef kinematicsRCM
             J = pinv(J); % newton
 
             if mode==0 
-                v = [1 1 1 1 1 1]*10^-1;
+                v = [1 1 1 0.5 0.5 0.5]*10^-1;
                 alfa = diag(v);
             end
             

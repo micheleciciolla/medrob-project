@@ -21,7 +21,7 @@ pause(3);
 % end effector
 [~, h_EE] =vrep.simxGetObjectHandle(ID, 'EE', vrep.simx_opmode_blocking);
 
-% end effector
+% end effector to follow
 [~, h_followed] =vrep.simxGetObjectHandle(ID, 'FollowedDummy', vrep.simx_opmode_blocking);
 
 % force sensor
@@ -73,19 +73,20 @@ pause(1);
 
 
 fprintf(2,'\n ******* STARTING ******* \n');
-% 
-% home_pose = [ 0.2245; 0.0315; -0.1934; 0 ; 0.2 ; 3.14/2 ];
-% 
-% home_pose = [ followed_pos'; followed_orient'];
-fprintf(1,'\n ******* CLIK TO START ******* \n');
 
-pause();
+
+% home_pose = [ -1.5413e+0;   -4.0699e-2;    +7.2534e-1;  -1.80e+2;         0;         0];
+
+% home_pose = [ followed_pos'; followed_orient'];
+% fprintf(1,'\n ******* CLIK TO START ******* \n');
+% 
+% pause();
 
 while spot < 6 % spots are 5
     
     [~, followed_pos]=vrep.simxGetObjectPosition(ID, h_followed, h_RCM, vrep.simx_opmode_streaming);
     [~, followed_orient]=vrep.simxGetObjectPosition(ID, h_followed, h_RCM, vrep.simx_opmode_streaming);
-    home_pose = [ followed_pos'; followed_orient'];
+    goal_pose = [ followed_pos'; followed_orient'];
 
     time = time +1;
     
@@ -101,10 +102,10 @@ while spot < 6 % spots are 5
         ee_pose= [ee_position, ee_orientation]';
         
         % 2) COMPUTE ERROR
-        err = utils.computeError(home_pose,ee_pose);
+        err = utils.computeError(goal_pose,ee_pose);
                 
-%         % 3) EVALUATE EXIT CONDITION (just on position)
-%         if norm(err,2)< 10^-3
+%         % 3) EVALUATE EXIT CONDITION
+%         if norm(err(1:3),2)< 10^-3
 %             spot = spot+1;
 %             mode = 1;
 %             fprintf(1, 'GOING TOWARD SPOT : %d \n', spot);
@@ -160,13 +161,15 @@ while spot < 6 % spots are 5
 end
 
 fprintf(2,' \n **** PROCESS ENDED ***** \n');
-disp("final pose :");
+disp("This is your final pose ( EE wrt RCM ) :");
 disp(ee_pose);
 
-disp("direct kin position :");
-disp(kinematicsRCM.direct_kinematics(Q));
+disp("goal pose wrt RCM");
+disp(goal_pose);
 
-disp("absolute difference % :");
-diff100 = ( kinematicsRCM.direct_kinematics(Q) - ee_pose(1:3) )*100;
-diff100 = round( diff100, 3);
-disp(abs(diff100));
+disp("difference");
+diff100 = goal_pose - ee_pose;
+diff100 = round( diff100, 5);
+disp(diff100);
+fprintf(2,' \n **** differences between frames ***** \n');
+

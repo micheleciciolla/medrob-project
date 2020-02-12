@@ -212,7 +212,7 @@ while spot<6
             mode=0;       
             
             disp("---------- OK ----------");
-            disp("--------- CLICK --------");
+            fprintf(2,'---------- PAUSED ---------- \n');
 
             pause();
             close
@@ -315,8 +315,7 @@ while spot<6
             hold on
             grid on
             title('image error convergence')
-            
-            
+                      
      
         end
                

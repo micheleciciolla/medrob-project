@@ -121,7 +121,9 @@ classdef utils
         
         function [error] = computeError(desired, current)
             % computes error between poses
-            error = [desired(1:3)- current(1:3); angdiff(desired(4:6),current(4:6) )];
+            % error = [desired(1:3)- current(1:3); angdiff(desired(4:6),current(4:6) )];
+            error = [desired(1:3)- current(1:3); angdiff(current(4:6),desired(4:6) )];
+
         end
         
         function [] = compute_grasp(clientID, h_7sx, h_7dx, vrep)

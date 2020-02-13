@@ -42,9 +42,9 @@ pause(3);
 [~, h_j6] = vrep.simxGetObjectHandle(ID,'J3_TOOL1',vrep.simx_opmode_blocking);
 
 % collection of all joint handles
-h_joints = [h_j1; h_j2; h_j3; h_j4; h_j5; h_j6];
+h_Joints = [h_j1; h_j2; h_j3; h_j4; h_j5; h_j6];
 
-sync = utils.syncronize(ID, vrep, h_joints, h_RCM, h_VS, h_EE);
+sync = utils.syncronize(ID, vrep, h_Joints, h_RCM, h_VS, h_EE);
 
 if sync
     fprintf(1,'Sycronization: OK... \n');
@@ -68,7 +68,7 @@ figure();
 
 % starting from zero config
 Q = zeros(6,1);
-kinematicsRCM.setJoints(ID, vrep, h_joints, Q);
+kinematicsRCM.setJoints(ID, vrep, h_Joints, Q);
 pause(1);
 
 
@@ -90,7 +90,7 @@ while spot < 6 % spots are 5
 
     time = time +1;
     
-    Q = kinematicsRCM.getJoints(ID, vrep, h_joints);
+    Q = kinematicsRCM.getJoints(ID, vrep, h_Joints);
     
     if mode == 0
         
@@ -103,6 +103,7 @@ while spot < 6 % spots are 5
         
         % 2) COMPUTE ERROR
         err = utils.computeError(goal_pose,ee_pose);
+        
                 
 %         % 3) EVALUATE EXIT CONDITION
 %         if norm(err(1:3),2)< 10^-3

@@ -52,9 +52,8 @@ classdef kinematicsRCM
             J = kinematicsRCM.compute_jacobian(Q);         
             J = pinv(J); % newton
 
-            if mode==0 
-                
-                v = [1 1 1 1 1 1]*10^-2*7;
+            if mode==0                 
+                v = 6.5*[1 1 1 1 0.2 0]*10^-2;
                 alfa = diag(v);
             end
             

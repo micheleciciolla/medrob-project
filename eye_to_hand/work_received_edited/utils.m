@@ -155,6 +155,15 @@ classdef utils
             end
         end
         
+        function [pose] = getPose(who,wrt_who,ID,vrep)
+                        
+            %reading where's the dummy
+            [~, position] = vrep.simxGetObjectPosition(ID, who, wrt_who, vrep.simx_opmode_streaming);
+            [~, orientation] = vrep.simxGetObjectOrientation(ID, who, wrt_who, vrep.simx_opmode_streaming);
+            pose = [position, orientation]';
+        
+        end
+        
         
     end
 end

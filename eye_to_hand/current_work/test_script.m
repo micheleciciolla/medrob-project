@@ -24,7 +24,7 @@ pause(2);
 [~, h_EE]=vrep.simxGetObjectHandle(ID, 'EE', vrep.simx_opmode_blocking);
 
 % dummy followed
-[~, h_Followed]=vrep.simxGetObjectHandle(ID, 'FollowedDummy', vrep.simx_opmode_blocking);
+[~, h_Dummy]=vrep.simxGetObjectHandle(ID, 'FollowedDummy', vrep.simx_opmode_blocking);
 %--------------------------------------------------------------------------
 
 % force sensor
@@ -50,7 +50,7 @@ pause(2);
 % collection of all joint handles
 h_Joints = [h_j1; h_j2; h_j3; h_j4; h_j5; h_j6];
 
-sync = utils.syncronize(ID, vrep, h_Joints, h_RCM, h_VS, h_Followed, h_EE);
+sync = utils.syncronize(ID, vrep, h_Joints, h_RCM, h_VS, h_Dummy, h_EE);
 
 if sync
     fprintf(1,'Sycronization: OK... \n');
@@ -87,10 +87,12 @@ end
 fl = 0.01;
 
 % control gain in mode 1 (see below)
-K = eye(6)*(10^-2)*0.2;
+% K = eye(6)*(10^-2)*1.5;
+% after tuning
+K = diag( [0.2 0.2 0.2 1.5 1.5 1.5]*10^-1);
 
 % control gain in mode 0 (see below)
-H = eye(6)*(10^-1)*2;
+H = diag( [1 1 1 0.1 0.1 0.1]*10^-1);
 
 % compliance matrix of manipulator
 C = eye(6)*(10^-1);
@@ -99,6 +101,8 @@ C = eye(6)*(10^-1);
 us_desired = zeros(4,5);
 vs_desired = zeros(4,5);
 sync=false;
+% null desired force and torque
+force_torque_d=zeros(6,1);
 
 % desired features EXTRACTION
 for b=1:4 % balls
@@ -116,19 +120,18 @@ for b=1:4 % balls
     end
 end
 
-% null desired force and torque
-force_torque_d=zeros(6,1);
-
 home_pose_wrt_world = [ -1.54;   -4.069e-2;    +7.25e-1;  -1.79e+2; -4.2305e-02;         6.80022e-01];
-% sending new pose of dummy attached to EE wrt RCM
-[~]= vrep.simxSetObjectPosition(ID, h_Followed, -1, home_pose_wrt_world(1:3), vrep.simx_opmode_oneshot);
-[~]= vrep.simxSetObjectOrientation(ID, h_Followed, -1, home_pose_wrt_world(4:6), vrep.simx_opmode_oneshot);
+% sending new pose of dummy attached to EE wrt world
+utils.setPose(home_pose_wrt_world,h_Dummy,-1,ID,vrep);
 
 % starting from zero config
-Q = zeros(6,1);
-kinematicsRCM.setJoints(ID, vrep, h_Joints, Q);
-
+kinematicsRCM.setJoints(ID, vrep, h_Joints, zeros(6,1));
 pause(3);
+
+% getting home_pose wrt RCM for mode 0 
+home_pose_wrt_RCM = utils.getPose(h_Dummy,h_RCM,ID,vrep);
+
+
 
 %%
 %	PROCESS LOOP
@@ -137,12 +140,14 @@ pause(3);
 % position and orientation of RCM wrt VS (should be costant)
 % used in conversion of coordinates from VS to RCM
 
-[~, vs2rcm_position]=vrep.simxGetObjectPosition(ID, h_RCM ,h_VS, vrep.simx_opmode_streaming);
-[~, vs2rcm_orientation]=vrep.simxGetObjectOrientation(ID, h_RCM ,h_VS, vrep.simx_opmode_streaming);
-vs2rcm = [vs2rcm_position';vs2rcm_orientation'];
+vs2rcm = utils.getPose(h_RCM,h_VS,ID,vrep);
+
+% [~, vs2rcm_position]=vrep.simxGetObjectPosition(ID, h_RCM ,h_VS, vrep.simx_opmode_streaming);
+% [~, vs2rcm_orientation]=vrep.simxGetObjectOrientation(ID, h_RCM ,h_VS, vrep.simx_opmode_streaming);
+% vs2rcm = [vs2rcm_position';vs2rcm_orientation'];
 
 %start from landmark at spot+1
-spot = round(rand*5)
+spot = 4; % round(rand*5)
 % first go to home pose in mode 0
 mode = 1;
 % time variable useful for plot ecc.
@@ -152,7 +157,7 @@ ghost_reached = false;
 
 fprintf(2,'******* STARTING ******* \n');
 
-while spot<6
+while spot<=6
     
     if mode==1
         
@@ -198,9 +203,9 @@ while spot<6
             us_desired(4,spot)-us_ee(4); ...
             vs_desired(4,spot)-vs_ee(4)];
         
-        if norm(err,2)<10^-4 && ghost_reached==false
+        if norm(err,2)<10^-5 && ghost_reached ==false
             ghost_reached = true;
-            disp("ghost reached");
+            disp("Ghost has reached desired spot");
         end
         
         %%
@@ -240,13 +245,13 @@ while spot<6
         
         % getting the current pose wrt VS
         while ~sync
-            [~, ee_position_VS]=vrep.simxGetObjectPosition(ID, h_Followed, h_VS, vrep.simx_opmode_streaming);
+            [~, ee_position_VS]=vrep.simxGetObjectPosition(ID, h_Dummy, h_VS, vrep.simx_opmode_streaming);
             sync = norm(ee_position_VS,2)~=0;
         end
         sync=false;
         
         while ~sync
-            [~, ee_orientation_VS]=vrep.simxGetObjectOrientation(ID, h_Followed, h_VS, vrep.simx_opmode_streaming);
+            [~, ee_orientation_VS]=vrep.simxGetObjectOrientation(ID, h_Dummy, h_VS, vrep.simx_opmode_streaming);
             sync = norm(ee_orientation_VS,2)~=0;
         end
         sync=false;
@@ -265,8 +270,8 @@ while spot<6
         next_ee_wrt_RCM = utils.getPoseInRCM(vs2rcm, next_ee_pose_VS);
         
         % sending new pose of dummy attached to EE wrt RCM
-        [~]= vrep.simxSetObjectPosition(ID, h_Followed, h_RCM, next_ee_wrt_RCM(1:3), vrep.simx_opmode_oneshot);
-        [~]= vrep.simxSetObjectOrientation(ID, h_Followed, h_RCM, next_ee_wrt_RCM(4:6), vrep.simx_opmode_oneshot);
+        [~]= vrep.simxSetObjectPosition(ID, h_Dummy, h_RCM, next_ee_wrt_RCM(1:3), vrep.simx_opmode_oneshot);
+        [~]= vrep.simxSetObjectOrientation(ID, h_Dummy, h_RCM, next_ee_wrt_RCM(4:6), vrep.simx_opmode_oneshot);
         
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -274,20 +279,21 @@ while spot<6
         %        HERE YOU FOLLOW DUMMY USING INVERSE KINEMATICS         %%
         %                                                               %%
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        Q = kinematicsRCM.getJoints(ID, vrep, h_Joints);
         
         %reading where's my EE
         [~, ee_position]=vrep.simxGetObjectPosition(ID, h_EE, h_RCM, vrep.simx_opmode_streaming);
         [~, ee_orientation]=vrep.simxGetObjectOrientation(ID, h_EE, h_RCM, vrep.simx_opmode_streaming);
         ee_wrt_RCM= [ee_position, ee_orientation]';
         
-        [~, dummy_position]=vrep.simxGetObjectPosition(ID, h_Followed, h_RCM, vrep.simx_opmode_streaming);
-        [~, dummy_orientation]=vrep.simxGetObjectOrientation(ID, h_Followed, h_RCM, vrep.simx_opmode_streaming);
-        
-        dummy= [dummy_position, dummy_orientation]';
+        %reading where's the dummy
+        [~, dummy_position]=vrep.simxGetObjectPosition(ID, h_Dummy, h_RCM, vrep.simx_opmode_streaming);
+        [~, dummy_orientation]=vrep.simxGetObjectOrientation(ID, h_Dummy, h_RCM, vrep.simx_opmode_streaming);
+        dummy_pose= [dummy_position, dummy_orientation]';
         
         % COMPUTE ERROR
-        err = utils.computeError(dummy,ee_wrt_RCM);
+        err = utils.computeError(dummy_pose,ee_wrt_RCM);
+        
+        Q = kinematicsRCM.getJoints(ID, vrep, h_Joints);
         
         % computing new configuration via inverse inverse kinematics
         Q = kinematicsRCM.inverse_kinematics(Q,err,0);
@@ -303,21 +309,64 @@ while spot<6
         
         %evaluating exit condition
         if norm(err(1:3),2)<=10^-3 && ghost_reached
-            if spot==4 % last spot
-                break;
-            end
+            
             mode=0;
             
             disp("------------ OK ------------");
             
-            close
+            
             ghost_reached = false;
         end
+        
+        % difference between pose of dummy and next_ee -> where it should
+        % be
+        % difference = utils.computeError(dummy, next_ee_wrt_RCM)
         
         
     elseif mode==0
         
         %% TO BE COMPLETED %% 
+        
+        dummy_pose = utils.getPose(h_Dummy,h_RCM,ID,vrep); 
+        ee_wrt_RCM = utils.getPose(h_EE, h_RCM,ID,vrep);
+        
+        error = utils.computeError(home_pose_wrt_RCM,dummy_pose);
+                      
+        % computing the displacement
+        displacement = H*error;
+        
+        % updating the pose
+        dummy_pose = dummy_pose + displacement;
+        
+        utils.setPose(dummy_pose, h_Dummy, h_RCM, ID, vrep);
+                
+        % COMPUTE ERROR
+        distance2dummy = utils.computeError(utils.getPose(h_Dummy,h_RCM,ID,vrep),utils.getPose(h_EE, h_RCM,ID,vrep));
+        
+        Q = kinematicsRCM.getJoints(ID, vrep, h_Joints);
+        
+        % computing new configuration via inverse inverse kinematics
+        Q = kinematicsRCM.inverse_kinematics(Q,distance2dummy,0);
+        
+        kinematicsRCM.setJoints(ID, vrep, h_Joints, Q);
+                
+        if(max(error)<=0.001 && max(distance2dummy(1:3))<=0.008)
+            
+            fprintf(1,'GOING TOWARD LANDMARK: %d \n',spot);
+            pause(1);
+            
+            mode=1;
+            spot=spot+1;
+            
+            if spot>5
+                break
+            end
+            
+            time = 0;
+            
+            continue;
+            
+        end
         
         
     end               
@@ -325,3 +374,5 @@ while spot<6
 end
 
 fprintf(2,'**** PROCESS ENDED ***** \n');
+
+

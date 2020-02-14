@@ -328,7 +328,7 @@ while spot<6
             
             subplot(2,1,2)
             [~, resolution, image] = vrep.simxGetVisionSensorImage(ID, h_VS, 0, vrep.simx_opmode_buffer);
-            imshow(image);
+            % imshow(image);
 
         end
         

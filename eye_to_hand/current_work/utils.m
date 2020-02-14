@@ -119,6 +119,8 @@ classdef utils
         
         function [error] = computeError(desired, current)
             % computes error between poses
+            % angdiff(a,b) computes b-a
+            
             error = [desired(1:3)- current(1:3); angdiff(desired(4:6),current(4:6) )];
             % error = [desired(1:3)- current(1:3); angdiff(current(4:6),desired(4:6) )];
 
@@ -154,6 +156,22 @@ classdef utils
             end
         end
         
+        function [pose] = getPose(who,wrt_who,ID,vrep)
+                        
+            % reading where's who 
+            [~, position] = vrep.simxGetObjectPosition(ID, who, wrt_who, vrep.simx_opmode_streaming);
+            [~, orientation] = vrep.simxGetObjectOrientation(ID, who, wrt_who, vrep.simx_opmode_streaming);
+            pose = [position, orientation]';
+        
+        end
+        
+        function [] = setPose(pose,who,wrt_who,ID,vrep)
+                     
+            % setting pose of handle who
+            [~]= vrep.simxSetObjectPosition(ID, who, wrt_who, pose(1:3), vrep.simx_opmode_oneshot);
+            [~]= vrep.simxSetObjectOrientation(ID, who, wrt_who, pose(4:6), vrep.simx_opmode_oneshot);
+                  
+        end        
         
     end
 end

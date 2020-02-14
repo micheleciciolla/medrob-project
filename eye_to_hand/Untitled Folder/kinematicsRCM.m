@@ -88,7 +88,7 @@ classdef kinematicsRCM
             [~] = vrep.simxSetJointPosition(ID, h_joints(3), Q_new(3), vrep.simx_opmode_streaming);
             [~] = vrep.simxSetJointPosition(ID, h_joints(4), Q_new(4), vrep.simx_opmode_streaming);
             [~] = vrep.simxSetJointPosition(ID, h_joints(5), Q_new(5), vrep.simx_opmode_streaming);
-            [~] = vrep.simxSetJointPosition(ID, h_joints(6), Q_new(6), vrep.simx_opmode_streaming);
+            % [~] = vrep.simxSetJointPosition(ID, h_joints(6), Q_new(6), vrep.simx_opmode_streaming);
             pause(0.01);
         end
 

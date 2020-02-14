@@ -50,7 +50,7 @@ pause(2);
 % collection of all joint handles
 h_Joints = [h_j1; h_j2; h_j3; h_j4; h_j5; h_j6];
 
-sync = utils.syncronize(ID, vrep, h_Joints, h_RCM, h_VS, h_Dummy, h_EE);
+sync = utils.syncronize(ID, vrep, h_Joints, h_RCM, h_VS, h_Dummy, h_EE, h_FS);
 
 if sync
     fprintf(1,'Sycronization: OK... \n');
@@ -79,9 +79,11 @@ for b=1:4
     [~, h_L_EE(b)]=vrep.simxGetObjectHandle(ID, ['LandmarkEE', num2str(b)], vrep.simx_opmode_blocking);
 end
 
-%%
+%__________________________________________________________________________
+
 %   SETTINGS
-%%
+%__________________________________________________________________________
+
 
 % focal length (depth of the near clipping plane)
 fl = 0.01;
@@ -95,16 +97,20 @@ K = diag( [0.2 0.2 0.2 1.5 1.5 1.5]*10^-1);
 H = diag( [1 1 1 0.1 0.1 0.1]*10^-1);
 
 % compliance matrix of manipulator
-C = eye(6)*(10^-1);
+C = diag( [0.1 0.1 0.1 0 0 0]*1);
 
 % preallocating for speed
 us_desired = zeros(4,5);
 vs_desired = zeros(4,5);
-sync=false;
+us_ee = zeros(4,1);
+vs_ee = zeros(4,1);
+zs_ee = zeros(4,1);
+        
 % null desired force and torque
 force_torque_d=zeros(6,1);
 
 % desired features EXTRACTION
+sync=false;
 for b=1:4 % balls
     for s=1:5 % spots
         while ~sync % until i dont get valid values
@@ -128,31 +134,29 @@ utils.setPose(home_pose_wrt_world,h_Dummy,-1,ID,vrep);
 kinematicsRCM.setJoints(ID, vrep, h_Joints, zeros(6,1));
 pause(3);
 
-% getting home_pose wrt RCM for mode 0 
+% getting home_pose wrt RCM for mode 0
 home_pose_wrt_RCM = utils.getPose(h_Dummy,h_RCM,ID,vrep);
 
 
+%__________________________________________________________________________
+%__________________________________________________________________________
 
-%%
 %	PROCESS LOOP
-%%
+%__________________________________________________________________________
+%__________________________________________________________________________
 
 % position and orientation of RCM wrt VS (should be costant)
 % used in conversion of coordinates from VS to RCM
 
 vs2rcm = utils.getPose(h_RCM,h_VS,ID,vrep);
 
-% [~, vs2rcm_position]=vrep.simxGetObjectPosition(ID, h_RCM ,h_VS, vrep.simx_opmode_streaming);
-% [~, vs2rcm_orientation]=vrep.simxGetObjectOrientation(ID, h_RCM ,h_VS, vrep.simx_opmode_streaming);
-% vs2rcm = [vs2rcm_position';vs2rcm_orientation'];
-
 %start from landmark at spot+1
-spot = 4; % round(rand*5)
+spot = 0; % round(rand*5)
 % first go to home pose in mode 0
-mode = 1;
+mode = 0;
 % time variable useful for plot ecc.
 time = 0;
-% if ghost reached position
+% if ghost reached position (ghost is the dummy)
 ghost_reached = false;
 
 fprintf(2,'******* STARTING ******* \n');
@@ -161,12 +165,12 @@ while spot<=6
     
     if mode==1
         
-        %	I) FEATURES and DEPTH EXTRACTION
+        %__________________________________________________________________
         
-        us_ee = zeros(4,1);
-        vs_ee = zeros(4,1);
-        zs_ee = zeros(4,1);
+        %	1) FEATURES and DEPTH EXTRACTION
+        %__________________________________________________________________
         
+       
         % GETTING CURRECT POSITION OF EE IN IMAGE PLANE
         for b=1:4 % ee_balls
             while ~sync  % until i dont get valid values
@@ -183,9 +187,10 @@ while spot<=6
         
         time = time +1;
         
-        %%
-        %	II) BUILDING the IMAGE JACOBIAN and COMPUTING THE ERROR (vision-based only)
-        %%
+        %__________________________________________________________________
+        
+        %	2) BUILDING the IMAGE JACOBIAN and COMPUTING THE ERROR (vision-based only)
+        %__________________________________________________________________
         
         % building the jacobian
         L = [ utils.build_point_jacobian(us_ee(1),vs_ee(1),zs_ee(1),fl); ...
@@ -194,7 +199,7 @@ while spot<=6
             utils.build_point_jacobian(us_ee(4),vs_ee(4),zs_ee(4),fl)];
         
         % computing the error
-        err= [us_desired(1,spot)-us_ee(1); ...
+        image_error= [us_desired(1,spot)-us_ee(1); ...
             vs_desired(1,spot)-vs_ee(1); ...
             us_desired(2,spot)-us_ee(2); ...
             vs_desired(2,spot)-vs_ee(2); ...
@@ -203,76 +208,54 @@ while spot<=6
             us_desired(4,spot)-us_ee(4); ...
             vs_desired(4,spot)-vs_ee(4)];
         
-        if norm(err,2)<10^-5 && ghost_reached ==false
+        if norm(image_error,2)<10^-5 && ghost_reached ==false
             ghost_reached = true;
-            disp("Ghost has reached desired spot");
+            % disp("Ghost has reached desired spot");
         end
         
-        %%
-        %	III) ADJUSTING the ERROR (via the force-based infos)
-        %
+        %__________________________________________________________________
         
-        while ~sync
-            [~, ~, force, torque]=vrep.simxReadForceSensor(ID, h_FS, vrep.simx_opmode_streaming);
-            sync = true; %norm(force,2)~=0;
-        end
-        sync=false;
-        %
+        %	3) ADJUSTING the ERROR (via the force-based infos)
+        %__________________________________________________________________
+        
+        [~, ~, force, torque]=vrep.simxReadForceSensor(ID, h_FS, vrep.simx_opmode_streaming);
+        
         force_torque=[force'; torque'];
-        force_torque=round(force_torque,2);
-        %
+        % force_torque=round(force_torque,2);
+        
         force_correction = L*C*(force_torque_d-force_torque);
-        err = err + force_correction;
+        
+        error = image_error + force_correction;
         
         time = time +1;
         
         %__________________________________________________________________
         
-        %	IV) COMPUTING the EE DISPLACEMENT
+        %	4) COMPUTING the EE DISPLACEMENT
         %__________________________________________________________________
         
         % computing the displacement
-        ee_displacement = K*pinv(-L)*err;
+        ee_displacement = K*pinv(-L)*error;
         
         if norm(ee_displacement,2)<10^-2.5 %10^-2.9
             ee_displacement = (ee_displacement/norm(ee_displacement,2))*10^-2.5;
         end
         
         %__________________________________________________________________
+        
+        %	5) UPDATING THE POSE
         %__________________________________________________________________
         
-        %	V) UPDATING THE POSE
-        
         % getting the current pose wrt VS
-        while ~sync
-            [~, ee_position_VS]=vrep.simxGetObjectPosition(ID, h_Dummy, h_VS, vrep.simx_opmode_streaming);
-            sync = norm(ee_position_VS,2)~=0;
-        end
-        sync=false;
-        
-        while ~sync
-            [~, ee_orientation_VS]=vrep.simxGetObjectOrientation(ID, h_Dummy, h_VS, vrep.simx_opmode_streaming);
-            sync = norm(ee_orientation_VS,2)~=0;
-        end
-        sync=false;
-        
-        ee_pose_VS= [ee_position_VS, ee_orientation_VS]';
+        ee_pose_VS = utils.getPose(h_Dummy,h_VS,ID,vrep);
         
         % getting the new pose
         next_ee_pose_VS = ee_pose_VS + ee_displacement;
         
-        % sending new pose of dummy attached to EE wrt VS
-        
-        % [~]= vrep.simxSetObjectPosition(ID, h_EE, h_VS, next_ee_pose_VS(1:3), vrep.simx_opmode_oneshot);
-        % [~]= vrep.simxSetObjectOrientation(ID, h_EE, h_VS, next_ee_pose_VS(4:6), vrep.simx_opmode_oneshot);
-        
         % getting next pose wrt RCM
         next_ee_wrt_RCM = utils.getPoseInRCM(vs2rcm, next_ee_pose_VS);
         
-        % sending new pose of dummy attached to EE wrt RCM
-        [~]= vrep.simxSetObjectPosition(ID, h_Dummy, h_RCM, next_ee_wrt_RCM(1:3), vrep.simx_opmode_oneshot);
-        [~]= vrep.simxSetObjectOrientation(ID, h_Dummy, h_RCM, next_ee_wrt_RCM(4:6), vrep.simx_opmode_oneshot);
-        
+        utils.setPose(next_ee_wrt_RCM,h_Dummy,h_RCM,ID,vrep);
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %                                                               %%
@@ -280,58 +263,36 @@ while spot<=6
         %                                                               %%
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
-        %reading where's my EE
-        [~, ee_position]=vrep.simxGetObjectPosition(ID, h_EE, h_RCM, vrep.simx_opmode_streaming);
-        [~, ee_orientation]=vrep.simxGetObjectOrientation(ID, h_EE, h_RCM, vrep.simx_opmode_streaming);
-        ee_wrt_RCM= [ee_position, ee_orientation]';
+        % gettting pose of dummy and EE
+        dummy_pose = utils.getPose(h_Dummy,h_RCM,ID,vrep);
+        ee_wrt_RCM = utils.getPose(h_EE, h_RCM,ID,vrep);
         
-        %reading where's the dummy
-        [~, dummy_position]=vrep.simxGetObjectPosition(ID, h_Dummy, h_RCM, vrep.simx_opmode_streaming);
-        [~, dummy_orientation]=vrep.simxGetObjectOrientation(ID, h_Dummy, h_RCM, vrep.simx_opmode_streaming);
-        dummy_pose= [dummy_position, dummy_orientation]';
-        
-        % COMPUTE ERROR
-        err = utils.computeError(dummy_pose,ee_wrt_RCM);
+        % computing error
+        distance2dummy = utils.computeError(dummy_pose,ee_wrt_RCM);
         
         Q = kinematicsRCM.getJoints(ID, vrep, h_Joints);
         
         % computing new configuration via inverse inverse kinematics
-        Q = kinematicsRCM.inverse_kinematics(Q,err,0);
+        Q = kinematicsRCM.inverse_kinematics(Q,distance2dummy,0);
         
         % sending to joints
-        [~] = vrep.simxSetJointPosition(ID, h_j1, Q(1), vrep.simx_opmode_streaming);
-        [~] = vrep.simxSetJointPosition(ID, h_j2, Q(2), vrep.simx_opmode_streaming);
-        [~] = vrep.simxSetJointPosition(ID, h_j3, Q(3), vrep.simx_opmode_streaming);
-        [~] = vrep.simxSetJointPosition(ID, h_j4, Q(4), vrep.simx_opmode_streaming);
-        [~] = vrep.simxSetJointPosition(ID, h_j5, Q(5), vrep.simx_opmode_streaming);
-        % sixth joint causes glityches. i'm disabling it
-        % [~] = vrep.simxSetJointPosition(ID, h_j6, Q(6), vrep.simx_opmode_streaming);
+        kinematicsRCM.setJoints(ID, vrep, h_Joints, Q);
         
-        %evaluating exit condition
-        if norm(err(1:3),2)<=10^-3 && ghost_reached
-            
-            mode=0;
-            
-            disp("------------ OK ------------");
-            
-            
+        % evaluating exit condition
+        if norm(distance2dummy(1:3),2)<=10^-3 && ghost_reached
+            mode =0 ;
+            fprintf(1,'********** OK ********** \n');
+            pause(3);
             ghost_reached = false;
         end
         
-        % difference between pose of dummy and next_ee -> where it should
-        % be
-        % difference = utils.computeError(dummy, next_ee_wrt_RCM)
-        
-        
     elseif mode==0
-        
-        %% TO BE COMPLETED %% 
-        
-        dummy_pose = utils.getPose(h_Dummy,h_RCM,ID,vrep); 
+        %%
+        dummy_pose = utils.getPose(h_Dummy,h_RCM,ID,vrep);
         ee_wrt_RCM = utils.getPose(h_EE, h_RCM,ID,vrep);
         
         error = utils.computeError(home_pose_wrt_RCM,dummy_pose);
-                      
+        
         % computing the displacement
         displacement = H*error;
         
@@ -339,7 +300,7 @@ while spot<=6
         dummy_pose = dummy_pose + displacement;
         
         utils.setPose(dummy_pose, h_Dummy, h_RCM, ID, vrep);
-                
+        
         % COMPUTE ERROR
         distance2dummy = utils.computeError(utils.getPose(h_Dummy,h_RCM,ID,vrep),utils.getPose(h_EE, h_RCM,ID,vrep));
         
@@ -351,28 +312,22 @@ while spot<=6
         kinematicsRCM.setJoints(ID, vrep, h_Joints, Q);
                 
         if(max(error)<=0.001 && max(distance2dummy(1:3))<=0.008)
-            
+            spot=spot+1;
             fprintf(1,'GOING TOWARD LANDMARK: %d \n',spot);
-            pause(1);
+            pause(3);
             
             mode=1;
-            spot=spot+1;
             
             if spot>5
                 break
             end
             
             time = 0;
-            
-            continue;
-            
+                       
         end
         
-        
-    end               
+    end
     
 end
 
 fprintf(2,'**** PROCESS ENDED ***** \n');
-
-

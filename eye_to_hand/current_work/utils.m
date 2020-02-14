@@ -23,7 +23,7 @@ classdef utils
         end
         
         
-        function [sync]  = syncronize(ID, vrep, h_joints, h_RCM, h_VS, h_Followed, h_EE)
+        function [sync]  = syncronize(ID, vrep, h_joints, h_RCM, h_VS, h_Followed, h_EE, h_FS)
       
             % used to wait to receive non zero values from vrep model
             % usually matlab and vrep need few seconds to send valid values
@@ -69,6 +69,12 @@ classdef utils
                 
                 sync = norm(v3,2)~=0;
             end
+            
+            while ~sync
+                [~, ~, ~, ~]=vrep.simxReadForceSensor(ID, h_FS, vrep.simx_opmode_streaming);
+                sync = true;
+            end
+            
             
         end
                       

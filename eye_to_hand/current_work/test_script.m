@@ -62,10 +62,8 @@ end
 % landmarks attached to goal positions :
 % we have 5 location to achieve
 % each location has 4 landmarks
-% preallocating for speed
 
 h_L = zeros(4,5); % here i save handles of landmarks
-h_L_EE = zeros(4,5); % here i save handles of balls attacched to EE
 
 % landmarks attached to spots
 for b=1:4 % each spot has 4 balls
@@ -73,6 +71,8 @@ for b=1:4 % each spot has 4 balls
         [~, h_L(b,s)]=vrep.simxGetObjectHandle(ID, ['Landmark', num2str(s), num2str(b)], vrep.simx_opmode_blocking);
     end
 end
+
+h_L_EE = zeros(4,5); % here i save handles of balls attacched to EE
 
 % landmarks attached to DUMMY FOLLOWED -> 'LandmarkEE1,2,3,4'
 for b=1:4
@@ -83,7 +83,6 @@ end
 
 %   SETTINGS
 %__________________________________________________________________________
-
 
 % focal length (depth of the near clipping plane)
 fl = 0.01;
@@ -100,31 +99,33 @@ H = diag( [1 1 1 0.1 0.1 0.1]*10^-1);
 C = diag( [0.1 0.1 0.1 0 0 0]*1);
 
 % preallocating for speed
-us_desired = zeros(4,5);
-vs_desired = zeros(4,5);
+% us_desired = zeros(4,5);
+% vs_desired = zeros(4,5);
 us_ee = zeros(4,1);
 vs_ee = zeros(4,1);
 zs_ee = zeros(4,1);
-        
+
 % null desired force and torque
 force_torque_d=zeros(6,1);
 
-% desired features EXTRACTION
+% % desired features EXTRACTION
+% sync=false;
+% for b=1:4 % balls
+%     for s=1:5 % spots
+%         while ~sync % until i dont get valid values
+%             [~, l_position]=vrep.simxGetObjectPosition(ID, h_L(b,s), h_VS, vrep.simx_opmode_streaming);
+%             sync = norm(l_position,2)~=0;
+%         end
+%         sync=false;
+%
+%         % here you have all landmark positions in image plane (perspective)
+%         us_desired(b,s)= fl*l_position(1)/l_position(3);
+%         vs_desired(b,s)= fl*l_position(2)/l_position(3);
+%
+%     end
+% end
 sync=false;
-for b=1:4 % balls
-    for s=1:5 % spots
-        while ~sync % until i dont get valid values
-            [~, l_position]=vrep.simxGetObjectPosition(ID, h_L(b,s), h_VS, vrep.simx_opmode_streaming);
-            sync = norm(l_position,2)~=0;
-        end
-        sync=false;
-        
-        % here you have all landmark positions in image plane (perspective)
-        us_desired(b,s)= fl*l_position(1)/l_position(3);
-        vs_desired(b,s)= fl*l_position(2)/l_position(3);
-        
-    end
-end
+[us_desired, vs_desired] = utils.getLandmarksPosition(ID, vrep, h_VS, h_L, fl);
 
 home_pose_wrt_world = [ -1.54;   -4.069e-2;    +7.25e-1;  -1.79e+2; -4.2305e-02;         6.80022e-01];
 % sending new pose of dummy attached to EE wrt world
@@ -136,7 +137,6 @@ pause(3);
 
 % getting home_pose wrt RCM for mode 0
 home_pose_wrt_RCM = utils.getPose(h_Dummy,h_RCM,ID,vrep);
-
 
 %__________________________________________________________________________
 %__________________________________________________________________________
@@ -156,21 +156,30 @@ spot = 0; % round(rand*5)
 mode = 0;
 % time variable useful for plot ecc.
 time = 0;
-% if ghost reached position (ghost is the dummy)
+% if ghost reached position of landmark (ghost is the dummy)
 ghost_reached = false;
 
 fprintf(2,'******* STARTING ******* \n');
 
-while spot<=6
-    
-    if mode==1
+% used for the final plot
+
+% x_coord = zeros(1, 16000);
+% y_coord = zeros(1, 16000);
+% z_coord = zeros(1, 16000);
+pause(0.1);
+
+
+while spot<6
+        
+    while mode==1
+        time = time +1;
+        
         
         %__________________________________________________________________
         
         %	1) FEATURES and DEPTH EXTRACTION
         %__________________________________________________________________
         
-       
         % GETTING CURRECT POSITION OF EE IN IMAGE PLANE
         for b=1:4 % ee_balls
             while ~sync  % until i dont get valid values
@@ -185,7 +194,10 @@ while spot<=6
             
         end
         
-        time = time +1;
+        % TO-DO
+        % [us_ee, vs_ee, zs_ee] = utils.get_EE_LandmarksPosition(ID, vrep, h_VS, h_L_EE, fl);
+        
+        
         
         %__________________________________________________________________
         
@@ -218,7 +230,7 @@ while spot<=6
         %	3) ADJUSTING the ERROR (via the force-based infos)
         %__________________________________________________________________
         
-        [~, ~, force, torque]=vrep.simxReadForceSensor(ID, h_FS, vrep.simx_opmode_streaming);
+        [~, ~, force, torque] = vrep.simxReadForceSensor(ID, h_FS, vrep.simx_opmode_streaming);
         
         force_torque=[force'; torque'];
         % force_torque=round(force_torque,2);
@@ -278,16 +290,40 @@ while spot<=6
         % sending to joints
         kinematicsRCM.setJoints(ID, vrep, h_Joints, Q);
         
+        % data saved for plot
+        x_coord(time) = ee_wrt_RCM(1);
+        y_coord(time) = ee_wrt_RCM(2);
+        z_coord(time) = ee_wrt_RCM(3);
+        force(time) = norm(force_correction,2);
+        total_error(time) = norm(error,2);
+        
         % evaluating exit condition
-        if norm(distance2dummy(1:3),2)<=10^-3 && ghost_reached
-            mode =0 ;
+        if norm(distance2dummy(1:3),2) <= 10^-3 && ghost_reached
+            mode =0;
             fprintf(1,'********** OK ********** \n');
             pause(3);
             ghost_reached = false;
-        end
+            time = 0;
+            
+            % plot EE position during last process
+            % PlotData.plot_EE(spot,[x_coord],[y_coord],[z_coord]);
+            
+            % plot of force and image error during time for last process
+            PlotData.plot_ForceAndImageErr(spot, [force], [total_error]);
+                        
+        end     
         
-    elseif mode==0
+    end
+    
+    while mode==0
         %%
+        
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        %                                                               %%
+        %        HERE YOU FOLLOW DUMMY USING INVERSE KINEMATICS         %%
+        %                                                               %%
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        
         dummy_pose = utils.getPose(h_Dummy,h_RCM,ID,vrep);
         ee_wrt_RCM = utils.getPose(h_EE, h_RCM,ID,vrep);
         
@@ -310,20 +346,18 @@ while spot<=6
         Q = kinematicsRCM.inverse_kinematics(Q,distance2dummy,0);
         
         kinematicsRCM.setJoints(ID, vrep, h_Joints, Q);
-                
-        if(max(error)<=0.001 && max(distance2dummy(1:3))<=0.008)
-            spot=spot+1;
-            fprintf(1,'GOING TOWARD LANDMARK: %d \n',spot);
-            pause(3);
-            
-            mode=1;
-            
+        
+        if(max(error)<=0.001 && norm(distance2dummy(1:3),2) <= 0.01)
+            spot = spot+1;
             if spot>5
                 break
             end
+            fprintf(1,'GOING TOWARD LANDMARK: %d \n',spot);
+            pause(2);
             
-            time = 0;
-                       
+            mode=1;
+            
+            
         end
         
     end
@@ -331,3 +365,4 @@ while spot<=6
 end
 
 fprintf(2,'**** PROCESS ENDED ***** \n');
+time

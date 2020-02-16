@@ -49,15 +49,16 @@ classdef kinematicsRCM
             % given error and current configuration returns next
             % configuration to converge to desired pose -> err=0
             
-            J = kinematicsRCM.compute_jacobian(Q);         
-            J = pinv(J); % newton
-
+            J = kinematicsRCM.compute_jacobian(Q);    
+                       
             if mode==0                 
                 v = 6.5*[1 1 1 1 0.2 0]*10^-2;
                 alfa = diag(v);
+                J = pinv(J); % newton
             end
             
             if mode==1 
+                % NOT USED 
                 v = [0.3 0.3 0.3 0.3 0.3 0.3]*5; 
                 alfa = diag(v);
             end

@@ -174,8 +174,7 @@ while spot<6
         
     while mode==1
         time = time +1;
-        
-        
+               
         %__________________________________________________________________
         
         %	1) FEATURES and DEPTH EXTRACTION

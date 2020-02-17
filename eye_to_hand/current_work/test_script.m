@@ -90,7 +90,7 @@ fl = 0.01;
 % control gain in mode 1 (see below)
 % K = eye(6)*(10^-2)*1.5;
 % after tuning
-K = diag( [0.2 0.2 0.2 1.5 1.5 1.5]*10^-1);
+K = diag( 0.8*[0.2 0.2 0.2 3.5 3.5 5.5]*10^-1);
 
 % control gain in mode 0 (see below)
 H = diag( [1 1 1 0.1 0.1 0.1]*10^-1);
@@ -124,6 +124,7 @@ force_torque_d=zeros(6,1);
 %
 %     end
 % end
+
 sync=false;
 [us_desired, vs_desired] = utils.getLandmarksPosition(ID, vrep, h_VS, h_L, fl);
 
@@ -223,6 +224,7 @@ while spot<6
         if norm(image_error,2)<10^-5 && ghost_reached ==false
             ghost_reached = true;
             % disp("Ghost has reached desired spot");
+            
         end
         
         %__________________________________________________________________
@@ -309,9 +311,13 @@ while spot<6
             % PlotData.plot_EE(spot,[x_coord],[y_coord],[z_coord]);
             
             % plot of force and image error during time for last process
-            PlotData.plot_ForceAndImageErr(spot, [force], [total_error]);
+            % PlotData.plot_ForceAndImageErr(spot, [force], [total_error]);
                         
-        end     
+        end   
+        
+        if(mod(time,10)==0)
+            PlotData.plot_image_error(spot, us_ee, vs_ee, us_desired, vs_desired);
+        end
         
     end
     
@@ -357,6 +363,8 @@ while spot<6
             
             mode=1;
             
+            figure(spot);
+            
             
         end
         
@@ -365,4 +373,3 @@ while spot<6
 end
 
 fprintf(2,'**** PROCESS ENDED ***** \n');
-time

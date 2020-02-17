@@ -37,7 +37,7 @@ classdef PlotData
             
             xlabel('time');
             xlim([0 length(force)]);
-            title(['norm of force correction toward spot n.',num2str(spot)]);
+            title(['norm of force correction toward spot n.', num2str(spot)]);
             
             subplot(2,1,2);
             grid on
@@ -47,9 +47,26 @@ classdef PlotData
             xlabel('time');
             xlim([0 length(force)]);
             
-            title(['norm of total error toward spot n.',num2str(spot)]);
+            title(['norm of total error toward spot n.', num2str(spot)]);
             
             
+        end
+        
+        function [] = plot_image_error(spot, u_ee, v_ee, u_desired, v_desired)
+            
+            % figure(spot);
+            
+            % plotting current position
+            plot = scatter( [u_ee(1), u_ee(2), u_ee(3), u_ee(4)],...
+                [v_ee(1), v_ee(2), v_ee(3), v_ee(4)], 'o','k');
+            
+            % plotting desired position
+            plot = scatter( [u_desired(1,spot), u_desired(2,spot), u_desired(3,spot), u_desired(4,spot) ],...
+                [v_desired(1,spot), v_desired(2,spot), v_desired(3,spot), v_desired(4,spot)], 'r', 'o','filled');
+            
+            hold on
+            grid on
+            title(['image error convergence to spot n. ',num2str(spot)])
         end
         
     end

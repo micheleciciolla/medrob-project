@@ -1,5 +1,5 @@
 %--------------------------------------------------------------------------
-%   INIT STUFF
+%%   INIT STUFF
 
 cd(fileparts(mfilename('fullpath')));
 clear;
@@ -81,7 +81,7 @@ end
 
 %__________________________________________________________________________
 
-%   SETTINGS
+%%   SETTINGS
 %__________________________________________________________________________
 
 % focal length (depth of the near clipping plane)
@@ -140,7 +140,7 @@ pause(3);
 home_pose_wrt_RCM = utils.getPose(h_Dummy,h_RCM,ID,vrep);
 
 %__________________________________________________________________________
-%__________________________________________________________________________
+%% ________________________________________________________________________
 
 %	PROCESS LOOP
 %__________________________________________________________________________
@@ -162,23 +162,18 @@ ghost_reached = false;
 
 fprintf(2,'******* STARTING ******* \n');
 
-% used for the final plot
-
-% x_coord = zeros(1, 16000);
-% y_coord = zeros(1, 16000);
-% z_coord = zeros(1, 16000);
 pause(0.1);
 
 
 while spot<6
-        
+    
     while mode==1
         time = time +1;
-               
-        %__________________________________________________________________
+        
+        %% ________________________________________________________________
         
         %	1) FEATURES and DEPTH EXTRACTION
-        %__________________________________________________________________
+        %  ________________________________________________________________
         
         % GETTING CURRECT POSITION OF EE IN IMAGE PLANE
         for b=1:4 % ee_balls
@@ -199,7 +194,7 @@ while spot<6
         
         
         
-        %__________________________________________________________________
+        %% ________________________________________________________________
         
         %	2) BUILDING the IMAGE JACOBIAN and COMPUTING THE ERROR (vision-based only)
         %__________________________________________________________________
@@ -226,7 +221,7 @@ while spot<6
             
         end
         
-        %__________________________________________________________________
+        %% ________________________________________________________________
         
         %	3) ADJUSTING the ERROR (via the force-based infos)
         %__________________________________________________________________
@@ -234,15 +229,12 @@ while spot<6
         [~, ~, force, torque] = vrep.simxReadForceSensor(ID, h_FS, vrep.simx_opmode_streaming);
         
         force_torque=[force'; torque'];
-        % force_torque=round(force_torque,2);
         
         force_correction = L*C*(force_torque_d-force_torque);
         
         error = image_error + force_correction;
         
-        time = time +1;
-        
-        %__________________________________________________________________
+        %% ________________________________________________________________
         
         %	4) COMPUTING the EE DISPLACEMENT
         %__________________________________________________________________
@@ -254,7 +246,7 @@ while spot<6
             ee_displacement = (ee_displacement/norm(ee_displacement,2))*10^-2.5;
         end
         
-        %__________________________________________________________________
+        %% ________________________________________________________________
         
         %	5) UPDATING THE POSE
         %__________________________________________________________________
@@ -270,10 +262,10 @@ while spot<6
         
         utils.setPose(next_ee_wrt_RCM,h_Dummy,h_RCM,ID,vrep);
         
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        %                                                               %%
-        %        HERE YOU FOLLOW DUMMY USING INVERSE KINEMATICS         %%
-        %                                                               %%
+        %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        %                                                                %%
+        %       HERE YOU FOLLOW DUMMY USING INVERSE KINEMATICS           %%
+        %                                                                %%
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         
         % gettting pose of dummy and EE
@@ -295,7 +287,7 @@ while spot<6
         x_coord(time) = ee_wrt_RCM(1);
         y_coord(time) = ee_wrt_RCM(2);
         z_coord(time) = ee_wrt_RCM(3);
-        force(time) = norm(force_correction,2);
+        force(time) = norm(force_correction(1:3),2);
         total_error(time) = norm(error,2);
         
         % evaluating exit condition
@@ -306,22 +298,23 @@ while spot<6
             ghost_reached = false;
             time = 0;
             
-            % plot EE position during last process
+            %% plot EE position during last process
             % PlotData.plot_EE(spot,[x_coord],[y_coord],[z_coord]);
             
-            % plot of force and image error during time for last process
+            %% plot of force and image error during time for last process
             % PlotData.plot_ForceAndImageErr(spot, [force], [total_error]);
-                        
-        end   
+            
+        end
         
         if(mod(time,10)==0)
+            %% plot image error
             PlotData.plot_image_error(spot, us_ee, vs_ee, us_desired, vs_desired);
         end
         
     end
     
     while mode==0
-        %%
+        %% 
         
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %                                                               %%
@@ -352,9 +345,10 @@ while spot<6
         
         kinematicsRCM.setJoints(ID, vrep, h_Joints, Q);
         
-        if(max(error)<=0.001 && norm(distance2dummy(1:3),2) <= 0.01)
+        if(max(error)<=0.01 && norm(distance2dummy(1:3),2) <= 0.01)
             spot = spot+1;
             if spot>5
+                fprintf(2,'**** PROCESS ENDED ***** \n');
                 break
             end
             fprintf(1,'GOING TOWARD LANDMARK: %d \n',spot);
@@ -371,4 +365,3 @@ while spot<6
     
 end
 
-fprintf(2,'**** PROCESS ENDED ***** \n');

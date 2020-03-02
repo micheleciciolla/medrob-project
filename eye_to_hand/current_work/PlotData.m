@@ -27,19 +27,21 @@ classdef PlotData
         
         function [] = plot_ForceAndImageErr(spot, force, total_error)
             
+            %             figure(spot);
+            %
+            %             subplot(2,1,1);
+            %             grid on
+            %             plot(force,'.');
+            %             ylabel('norm force');
+            %             ylim([min(force) max(force)]);
+            %
+            %             xlabel('time');
+            %             xlim([0 length(force)]);
+            %             title(['norm of force correction toward spot n.', num2str(spot)]);
+            %
+            %             subplot(2,1,2);
+            
             figure(spot);
-            
-            subplot(2,1,1);
-            grid on
-            plot(force,'.');
-            ylabel('norm force');
-            ylim([min(force) max(force)]);
-            
-            xlabel('time');
-            xlim([0 length(force)]);
-            title(['norm of force correction toward spot n.', num2str(spot)]);
-            
-            subplot(2,1,2);
             grid on
             plot(total_error,'.');
             ylabel('image error');

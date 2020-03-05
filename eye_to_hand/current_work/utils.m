@@ -88,6 +88,10 @@ classdef utils
         
         %%same for ECM
         function [sync]  = syncronizeECM(ID, vrep, h_joints, h_BP, h_VS, h_PSM)
+            % h_BP should be the base frame
+            % h_VS is the vision sensor as lens of the camera you want to
+            % move
+            % h_PSM is the EE of daVinci
             
             % used to wait to receive non zero values from vrep model
             

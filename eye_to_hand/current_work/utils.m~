@@ -29,6 +29,7 @@ classdef utils
             % used to wait to receive non zero values from vrep model
             
             % usually matlab and vrep need few seconds to send valid values
+            vrep.simxAddStatusbarMessage(ID,'NULL ', vrep.simx_opmode_oneshot);
             vrep.simxAddStatusbarMessage(ID,' ', vrep.simx_opmode_oneshot);
             vrep.simxAddStatusbarMessage(ID,'------------------------------------------------', vrep.simx_opmode_oneshot);          
             vrep.simxAddStatusbarMessage(ID,'--- Matlab script CONNECTED ---', vrep.simx_opmode_oneshot);

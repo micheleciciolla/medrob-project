@@ -32,8 +32,8 @@ classdef PlotData
             subplot(2,1,1);
             grid on
             plot(force,'.');
-            ylabel('force');
-            % ylim([min(force) max(force)]);
+            ylabel('norm force');
+            ylim([min(force) max(force)]);
             
             xlabel('time');
             xlim([0 length(force)]);
@@ -52,9 +52,11 @@ classdef PlotData
             
         end
         
-        function [] = plot_image_error(spot, u_ee, v_ee, u_desired, v_desired)
+        function [] = plot_image_error_and_force(spot, u_ee, v_ee, u_desired, v_desired, force, time)
             
             % figure(spot);
+            
+            subplot(2,1,1)
             
             % plotting current position
             plot = scatter( [u_ee(1), u_ee(2), u_ee(3), u_ee(4)],...
@@ -67,6 +69,16 @@ classdef PlotData
             hold on
             grid on
             title(['image error convergence to spot n. ',num2str(spot)])
+            
+            
+            subplot(2,1,2)
+            
+            color = 'r';
+            if force == 0 color = 'k';
+            end
+            stem(time, force,color,'filled', 'LineWidth', 2);
+            hold on
+            xlabel("time"); ylabel("force norm"); title("FORCE SENSOR PLOT");
         end
         
     end

@@ -89,20 +89,40 @@ fl = 0.01;
 % control gain in mode 1 (see below)
 % K = eye(6)*(10^-2)*1.5;
 % after tuning
-K = diag( 0.9*[0.2 0.2 0.2 3.5 3.5 5.5]*10^-1);
+K = diag( 0.8*[0.2 0.2 0.2 3.5 3.5 5.5]*10^-1);
 
 % control gain in mode 0 (see below)
 H = diag( [1 1 1 0.1 0.1 0.1]*10^-1);
 
 % compliance matrix of manipulator
-C = diag( [0.1 0.1 0.1 0.01 0.01 0.01]*5);
+C = diag( [0.1 0.1 0.1 0.1 0.1 0.1]*1);
 
+% preallocating for speed
+% us_desired = zeros(4,5);
+% vs_desired = zeros(4,5);
 us_ee = zeros(4,1);
 vs_ee = zeros(4,1);
 zs_ee = zeros(4,1);
 
 % null desired force and torque
 force_torque_d=zeros(6,1);
+
+% % desired features EXTRACTION
+% sync=false;
+% for b=1:4 % balls
+%     for s=1:5 % spots
+%         while ~sync % until i dont get valid values
+%             [~, l_position]=vrep.simxGetObjectPosition(ID, h_L(b,s), h_VS, vrep.simx_opmode_streaming);
+%             sync = norm(l_position,2)~=0;
+%         end
+%         sync=false;
+%
+%         % here you have all landmark positions in image plane (perspective)
+%         us_desired(b,s)= fl*l_position(1)/l_position(3);
+%         vs_desired(b,s)= fl*l_position(2)/l_position(3);
+%
+%     end
+% end
 
 sync=false;
 [us_desired, vs_desired] = utils.getLandmarksPosition(ID, vrep, h_VS, h_L, fl);
@@ -111,7 +131,7 @@ home_pose_wrt_world = [ -1.54;   -4.069e-2;    +7.25e-1;  -1.79e+2; -4.2305e-02;
 % sending new pose of dummy attached to EE wrt world
 utils.setPose(home_pose_wrt_world,h_Dummy,-1,ID,vrep);
 
-%% starting from zero config
+% starting from zero config
 kinematicsRCM.setJoints(ID, vrep, h_Joints, zeros(6,1));
 pause(3);
 
@@ -121,7 +141,7 @@ home_pose_wrt_RCM = utils.getPose(h_Dummy,h_RCM,ID,vrep);
 %__________________________________________________________________________
 %__________________________________________________________________________
 
-%%	PROCESS LOOP
+%	PROCESS LOOP
 %__________________________________________________________________________
 %__________________________________________________________________________
 
@@ -130,19 +150,27 @@ home_pose_wrt_RCM = utils.getPose(h_Dummy,h_RCM,ID,vrep);
 
 vs2rcm = utils.getPose(h_RCM,h_VS,ID,vrep);
 
-% spot = start from landmark at spot+1
-% mode = first go to home pose in mode 0
-% time = time variable useful for plot ecc.
-[spot,mode,time]=deal(0,0,0); 
-
+%start from landmark at spot+1
+spot = 0; % round(rand*5)
+% first go to home pose in mode 0
+mode = 0;
+% time variable useful for plot ecc.
+time = 0;
 % if ghost reached position of landmark (ghost is the dummy)
 ghost_reached = false;
 
-fprintf(2,'******* STARTING ******* \n'); pause(0.1);
+fprintf(2,'******* STARTING ******* \n');
+
+% used for the final plot
+
+% x_coord = zeros(1, 16000);
+% y_coord = zeros(1, 16000);
+% z_coord = zeros(1, 16000);
+pause(0.1);
+
 
 %Initialize Colors for landmarks (Initial Reset)
 init_landmarks_color(ID,vrep)
-
 while spot<6
     
     while mode==1
@@ -151,7 +179,7 @@ while spot<6
                
         %__________________________________________________________________
         
-        %% 	1) FEATURES and DEPTH EXTRACTION
+        %	1) FEATURES and DEPTH EXTRACTION
         %__________________________________________________________________
         
         % GETTING CURRECT POSITION OF EE IN IMAGE PLANE
@@ -168,12 +196,14 @@ while spot<6
             
         end
         
-        % TO-DO (future work)
-        % [us_ee, vs_ee, zs_ee] = utils.get_EE_LandmarksPosition(ID, vrep, h_VS, h_L_EE, fl);        
-               
+        % TO-DO
+        % [us_ee, vs_ee, zs_ee] = utils.get_EE_LandmarksPosition(ID, vrep, h_VS, h_L_EE, fl);
+        
+        
+        
         %__________________________________________________________________
         
-        %%	2) BUILDING the IMAGE JACOBIAN and COMPUTING THE ERROR (vision-based only)
+        %	2) BUILDING the IMAGE JACOBIAN and COMPUTING THE ERROR (vision-based only)
         %__________________________________________________________________
         
         % building the jacobian
@@ -199,18 +229,22 @@ while spot<6
         
         %__________________________________________________________________
         
-        %%	3) ADJUSTING the ERROR (via the force-based infos)
+        %	3) ADJUSTING the ERROR (via the force-based infos)
         %__________________________________________________________________
         
         [~, ~, force, torque] = vrep.simxReadForceSensor(ID, h_FS, vrep.simx_opmode_streaming);
-        force_torque=[force'; torque'];        
+        
+        force_torque=[force'; torque'];
+        
         force_correction = L*C*(force_torque_d-force_torque);
         
-        error = image_error + force_correction;              
+        error = image_error + force_correction;
+        
+       
         
         %__________________________________________________________________
         
-        %%	4) COMPUTING the EE DISPLACEMENT
+        %	4) COMPUTING the EE DISPLACEMENT
         %__________________________________________________________________
         
         % computing the displacement
@@ -222,7 +256,7 @@ while spot<6
         
         %__________________________________________________________________
         
-        %%	5) UPDATING THE POSE
+        %	5) UPDATING THE POSE
         %__________________________________________________________________
         
         % getting the current pose wrt VS
@@ -271,7 +305,7 @@ while spot<6
         end
         
         %% evaluating exit condition
-        if norm(pose_error(1:2)) <= 3*10^-4 && ghost_reached
+        if norm(pose_error(1:3),2) <= 10^-3 && ghost_reached
             
             mode =0;
             stem(time, force,'g','square' ,'LineWidth', 2 );
@@ -279,9 +313,12 @@ while spot<6
             green_landmarks_color(ID,vrep,spot);
             pause(3);
             ghost_reached = false;
-            time = 0;                        
+            time = 0;
+                        
         end   
-                
+        
+        
+        
     end
     
     while mode==0
@@ -316,22 +353,25 @@ while spot<6
         
         kinematicsRCM.setJoints(ID, vrep, h_Joints, Q);
         
-        if(max(error(1:3))<=0.1 && norm(pose_error(1:3),2) <= 0.01)            
+        if(max(error)<=0.001 && norm(pose_error(1:3),2) <= 0.01)
+            
             spot = spot+1;
-     
+            
             if spot>5
-                % Restore initial colors of landmarks              
+                %Restore initial colors of landmarks
                 init_landmarks_color(ID,vrep)
                 break
             end
             
-            % RED COLOR for the next landmark
-            red_landmarks_color(ID,vrep,spot)
+            %RED COLOR for the next landmark
+            red_landmarks_color(ID,vrep,spot)     
             
-            fprintf(1,'GOING TOWARD LANDMARK: %d \n',spot); pause(2);
+            fprintf(1,'GOING TOWARD LANDMARK: %d \n',spot);
+            pause(1);
             
-            mode=1;
+            mode=1;           
             figure(spot);
+            
             
         end
         

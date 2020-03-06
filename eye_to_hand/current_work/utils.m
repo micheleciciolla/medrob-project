@@ -87,11 +87,9 @@ classdef utils
         end
         
         %%same for ECM
-        function [sync]  = syncronizeECM(ID, vrep, h_joints, h_BP, h_VS, h_PSM)
-            % h_BP should be the base frame
-            % h_VS is the vision sensor as lens of the camera you want to
-            % move
-            % h_PSM is the EE of daVinci
+        %VS base frame BP
+        %EE sarebbe il VS
+        function [sync]  = syncronizeECM(ID, vrep, h_joints, h_VS, h_EE, h_PSM)
             
             % used to wait to receive non zero values from vrep model
             
@@ -115,12 +113,14 @@ classdef utils
             sync = false;
             while ~sync
                 % syncronizing position of EE_ECM wrt VS
-                [~, v2]=vrep.simxGetObjectPosition(ID, h_VS, h_BP, vrep.simx_opmode_streaming);
-                [~, ~]=vrep.simxGetObjectOrientation(ID, h_VS, h_BP, vrep.simx_opmode_streaming);
+                [~, v2]=vrep.simxGetObjectPosition(ID, h_EE, h_VS, vrep.simx_opmode_streaming);
+                [~, ~]=vrep.simxGetObjectOrientation(ID, h_EE, h_VS, vrep.simx_opmode_streaming);
                 
               % syncronizing position of PSM wrt ECM
-                [~, ~]=vrep.simxGetObjectPosition(ID, h_PSM, h_BP, vrep.simx_opmode_streaming);
-                [~, ~]=vrep.simxGetObjectOrientation(ID, h_PSM, h_BP, vrep.simx_opmode_streaming);
+                [~, ~]=vrep.simxGetObjectPosition(ID, h_PSM, h_VS, vrep.simx_opmode_streaming);
+                [~, ~]=vrep.simxGetObjectOrientation(ID, h_PSM, h_VS, vrep.simx_opmode_streaming);
+                
+               
                 
                 sync = norm(v2,2)~=0;
                 
@@ -128,8 +128,13 @@ classdef utils
             
             sync = false;
             
+            
+           
+            
+            
         end
-       
+        
+        
         function [J] = build_point_jacobian(u,v,z,fl)
             
             % function used to build INTERACTION matrix
@@ -268,13 +273,14 @@ classdef utils
             end
         end
         
-        function [us_ee, vs_ee, zs_ee] = get_EE_LandmarksPosition(ID, vrep, h_VS, h_L_EE, fl,us_ee, vs_ee, zs_ee )
+        function [us_ee, vs_ee, zs_ee] = get_EE_LandmarksPosition(ID, vrep, h_VS, h_L_EE, fl)
             
-            %% TO BE FIXED (NOT YET in)
+            %% TO BE FIXED (NOT YET INSERTED)
             
             us_ee = zeros(4,1);
             vs_ee = zeros(4,1);
             zs_ee = zeros(4,1);
+            
             
             sync = false; % to be fixed
             

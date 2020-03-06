@@ -1,5 +1,5 @@
 classdef kinematicsRCM
-    % from distributed/dVKinematics.cpp 
+    % from distributed/dVKinematics.cpp
     % (Marco Ferro's file)
     properties
         t = zeros(27); % data structure to save data
@@ -7,13 +7,13 @@ classdef kinematicsRCM
     end
     methods (Static)
         
-            function [pos] = direct_kinematics(Q)
+        function [pos] = direct_kinematics(Q)
             
             % computes position of EE wrt RCM given joints values
             % output is 3x1 vector
-                       
+            
             q1 = Q(1); q2 = Q(2); q3 = Q(3); q4 = Q(4); q5 = Q(5); q6 = Q(6);
-             
+            
             t(2) = sin(q1);
             t(3) = cos(q1);
             t(4) = cos(q4);
@@ -49,22 +49,19 @@ classdef kinematicsRCM
             % given error and current configuration returns next
             % configuration to converge to desired pose -> err=0
             
-            J = kinematicsRCM.compute_jacobian(Q);    
-                       
-            if mode==0                 
-                v = [1 1 1 0.5 0 0]*10^-1;
+            J = kinematicsRCM.compute_jacobian(Q);
+            
+            if mode==0
+                v = 7.5*[1 1 1 2 0.01 0]*10^-2;
                 alfa = diag(v);
                 J = pinv(J); % newton
-%                 w = [1 1 1 1 1 10];
-%                 W = diag(w);
-%                 J = W^-1*J'*(J*W^-1*J')^-1;
             end
             
-            if mode==1 
-                v = 6.5*[1 1 2 1 0 0]*10^-2;
+            if mode==1
+                % NOT USED
+                v = [0.3 0.3 0.3 0.3 0.3 0.3]*5;
                 alfa = diag(v);
-                J = pinv(J); % newton
-            end                                       
+            end
             % computing newton method for inverse kinematics
             Q = Q' + alfa*J*(err);
             
@@ -72,7 +69,7 @@ classdef kinematicsRCM
         
         function [Q] = getJoints(ID, vrep, h_joints)
             
-            %% getting current values of joints
+            % getting current values of joints
             [~, q1] = vrep.simxGetJointPosition(ID, h_joints(1), vrep.simx_opmode_buffer);
             [~, q2] = vrep.simxGetJointPosition(ID, h_joints(2), vrep.simx_opmode_buffer);
             [~, q3] = vrep.simxGetJointPosition(ID, h_joints(3), vrep.simx_opmode_buffer);
@@ -85,7 +82,7 @@ classdef kinematicsRCM
         
         function [] = setJoints(ID, vrep, h_joints, Q_new)
             
-            %% sending values in Q_new to Joints
+            % sending values in Q_new to Joints
             [~] = vrep.simxSetJointPosition(ID, h_joints(1), Q_new(1), vrep.simx_opmode_streaming);
             [~] = vrep.simxSetJointPosition(ID, h_joints(2), Q_new(2), vrep.simx_opmode_streaming);
             [~] = vrep.simxSetJointPosition(ID, h_joints(3), Q_new(3), vrep.simx_opmode_streaming);
@@ -94,11 +91,11 @@ classdef kinematicsRCM
             [~] = vrep.simxSetJointPosition(ID, h_joints(6), Q_new(6), vrep.simx_opmode_streaming);
             pause(0.01);
         end
-
+        
         
         function [J] = compute_jacobian(Q)
-
-            %% computes Jacobian of current configuration
+            
+            % computes Jacobian of current configuration
             % formula of Jacobian has been taken from distributed/dVKinematics.cpp
             % (Marco Ferro's file)
             
@@ -177,7 +174,7 @@ classdef kinematicsRCM
             J(1,4) = t5*t34+l*t5*t26-t2*t10*t33-l*t2*t10*t32;
             J(1,5) = -t25*t33-l*t25*t32-t6*t10*t34-l*t6*t10*t26;
             J(1,6) = -l*t26*t59-l*t32*t53;
-                        
+            
             J(2,1) = 0.0;
             J(2,2) = -t4*(t41+t55-t7*t40*9.1E-3)-t2*(t16+t17+t37)-l*t2*t26+l*t4*t46;
             J(2,3) = -t5;
@@ -211,7 +208,7 @@ classdef kinematicsRCM
             J(6,3) = 0.0;
             J(6,4) = -t2*t10;
             J(6,5) = -t23-t24;
-            J(6,6) = -t52+t65;         
+            J(6,6) = -t52+t65;
             
         end
     end

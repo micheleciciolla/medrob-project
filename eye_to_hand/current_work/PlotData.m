@@ -26,7 +26,7 @@ classdef PlotData
         end
         
         function [] = plot_ForceAndImageErr(spot, force, total_error)
-            
+            % they are not used but still useful for future work
             figure(spot);
             
             subplot(2,1,1);
@@ -60,7 +60,7 @@ classdef PlotData
             
             % plotting current position
             plot = scatter( [u_ee(1), u_ee(2), u_ee(3), u_ee(4)],...
-                [v_ee(1), v_ee(2), v_ee(3), v_ee(4)], 'o','k');
+                [v_ee(1), v_ee(2), v_ee(3), v_ee(4)], 'o','b');
             
             % plotting desired position
             plot = scatter( [u_desired(1,spot), u_desired(2,spot), u_desired(3,spot), u_desired(4,spot) ],...

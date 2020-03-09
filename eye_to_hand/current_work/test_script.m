@@ -112,8 +112,8 @@ home_pose_wrt_world = [ -1.54;   -4.069e-2;    +7.25e-1;  -1.79e+2; -4.2305e-02;
 utils.setPose(home_pose_wrt_world,h_Dummy,-1,ID,vrep);
 
 %% starting from zero config
-kinematicsRCM.setJoints(ID, vrep, h_Joints, zeros(6,1));
-pause(3);
+% kinematicsRCM.setJoints(ID, vrep, h_Joints, zeros(6,1));
+pause(0.3);
 
 % getting home_pose wrt RCM for mode 0
 home_pose_wrt_RCM = utils.getPose(h_Dummy,h_RCM,ID,vrep);
@@ -133,7 +133,7 @@ vs2rcm = utils.getPose(h_RCM,h_VS,ID,vrep);
 % spot = start from landmark at spot+1
 % mode = first go to home pose in mode 0
 % time = time variable useful for plot ecc.
-[spot,mode,time]=deal(0,0,0); 
+[spot,mode,time]=deal(0,0,0);
 
 % if ghost reached position of landmark (ghost is the dummy)
 ghost_reached = false;
@@ -148,7 +148,7 @@ while spot<6
     while mode==1
         
         time = time +1;
-               
+        
         %__________________________________________________________________
         
         %% 	1) FEATURES and DEPTH EXTRACTION
@@ -169,8 +169,8 @@ while spot<6
         end
         
         % TO-DO (future work)
-        % [us_ee, vs_ee, zs_ee] = utils.get_EE_LandmarksPosition(ID, vrep, h_VS, h_L_EE, fl);        
-               
+        % [us_ee, vs_ee, zs_ee] = utils.get_EE_LandmarksPosition(ID, vrep, h_VS, h_L_EE, fl);
+        
         %__________________________________________________________________
         
         %%	2) BUILDING the IMAGE JACOBIAN and COMPUTING THE ERROR (vision-based only)
@@ -194,7 +194,7 @@ while spot<6
         
         if norm(image_error,2)<10^-5 && ghost_reached ==false
             ghost_reached = true;
-                      
+            
         end
         
         %__________________________________________________________________
@@ -203,10 +203,10 @@ while spot<6
         %__________________________________________________________________
         
         [~, ~, force, torque] = vrep.simxReadForceSensor(ID, h_FS, vrep.simx_opmode_streaming);
-        force_torque=[force'; torque'];        
+        force_torque=[force'; torque'];
         force_correction = L*C*(force_torque_d-force_torque);
         
-        error = image_error + force_correction;              
+        error = image_error + force_correction;
         
         %__________________________________________________________________
         
@@ -214,10 +214,12 @@ while spot<6
         %__________________________________________________________________
         
         % computing the displacement
-        ee_displacement = K*pinv(-L)*error;
+        % the displacement is intregral of tau since K is a small value
+        % (small sampling time Ts)
+        ee_displacement_VS = K*pinv(-L)*error;
         
-        if norm(ee_displacement,2)<10^-2.5 %10^-2.9
-            ee_displacement = (ee_displacement/norm(ee_displacement,2))*10^-2.5;
+        if norm(ee_displacement_VS,2)<10^-2.5 %10^-2.9
+            ee_displacement_VS = (ee_displacement_VS/norm(ee_displacement_VS,2))*10^-2.5;
         end
         
         %__________________________________________________________________
@@ -229,7 +231,7 @@ while spot<6
         ee_pose_VS = utils.getPose(h_Dummy,h_VS,ID,vrep);
         
         % getting the new pose
-        next_ee_pose_VS = ee_pose_VS + ee_displacement;
+        next_ee_pose_VS = ee_pose_VS + ee_displacement_VS;
         
         % getting next pose wrt RCM
         next_ee_wrt_RCM = utils.getPoseInRCM(vs2rcm, next_ee_pose_VS);
@@ -262,7 +264,7 @@ while spot<6
         y_coord(time) = ee_wrt_RCM(2);
         z_coord(time) = ee_wrt_RCM(3);
         total_error(time) = norm(error,2);
-
+        
         force = norm(round(force_torque,3));
         
         %% live plot of force and image error
@@ -270,9 +272,9 @@ while spot<6
             PlotData.plot_image_error_and_force(spot, us_ee, vs_ee, us_desired, vs_desired,force,time);
         end
         
-                
+        ghost_reached
         %% evaluating exit condition
-        if norm(pose_error(1:2)) <= 3*10^-4 && ghost_reached
+        if norm(pose_error(1:2)) <= 4*10^-4 && ghost_reached
             
             mode =0;
             stem(time, force,'g','square' ,'LineWidth', 2 );
@@ -282,8 +284,8 @@ while spot<6
             pause(3);
             ghost_reached = false;
             time = 0;
-        end   
-                
+        end
+        
     end
     
     while mode==0
@@ -318,11 +320,11 @@ while spot<6
         
         kinematicsRCM.setJoints(ID, vrep, h_Joints, Q);
         
-        if(max(error(1:3))<=0.1 && norm(pose_error(1:3),2) <= 0.01)            
+        if(max(error(1:3))<=0.1 && norm(pose_error(1:3),2) <= 0.01)
             spot = spot+1;
-     
+            
             if spot>5
-                % Restore initial colors of landmarks              
+                % Restore initial colors of landmarks
                 init_landmarks_color(ID,vrep)
                 break
             end
@@ -348,9 +350,9 @@ function [] = init_landmarks_color(ID,vrep)
 [~, ~, ~, ~, ~] = vrep.simxCallScriptFunction(ID, ['L_Prismatic_joint'] ,vrep.sim_scripttype_childscript(),'initColors',[1],[],[],[],vrep.simx_opmode_blocking);
 end
 function [] = green_landmarks_color(ID,vrep,spot)
-[~, ~, ~, ~, ~] = vrep.simxCallScriptFunction(ID, ['L_Prismatic_joint'] ,vrep.sim_scripttype_childscript(),'changeColorGreen',[spot],[],[],[],vrep.simx_opmode_blocking);          
+[~, ~, ~, ~, ~] = vrep.simxCallScriptFunction(ID, ['L_Prismatic_joint'] ,vrep.sim_scripttype_childscript(),'changeColorGreen',[spot],[],[],[],vrep.simx_opmode_blocking);
 end
 
 function [] = red_landmarks_color(ID,vrep,spot)
-[~, ~, ~, ~, ~] = vrep.simxCallScriptFunction(ID, ['L_Prismatic_joint'] ,vrep.sim_scripttype_childscript(),'changeColorRed',[spot],[],[],[],vrep.simx_opmode_blocking);          
+[~, ~, ~, ~, ~] = vrep.simxCallScriptFunction(ID, ['L_Prismatic_joint'] ,vrep.sim_scripttype_childscript(),'changeColorRed',[spot],[],[],[],vrep.simx_opmode_blocking);
 end

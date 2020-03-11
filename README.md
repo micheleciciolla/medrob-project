@@ -8,8 +8,7 @@ Final Project for Medical Robotics course 2018-2019, Università La Sapienza Rom
 We started working on a implementation made by other students from Medical Robs course. Our task is to upgrade and implement new features. In particular we performed a parameter tuning for convergence and we implemented the inverse kinematics of the model starting from the original paper.
 
 ## Demo
-Click here for the DEMO VERSION: 
-[![Alt text](https://img.youtube.com/vi/VID/0.jpg)](https://youtu.be/TtCsiUMK5Uk)
+[![SC2 Video](demo.gif)](https://youtu.be/TtCsiUMK5Uk)
 
 ## Team
 * Michele Ciciolla <a href="https://github.com/micheleciciolla"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Octicons-mark-github.svg/1024px-Octicons-mark-github.svg.png" width="30"></a>

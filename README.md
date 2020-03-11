@@ -17,5 +17,5 @@ Click on the image for complete video
 
 * Flavio Lorenzi <a href="https://github.com/FlavioLorenzi"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Octicons-mark-github.svg/1024px-Octicons-mark-github.svg.png" width="30"></a>
 
-## Documentation (to-do)
-You can read our technical documentation about this project here PDF [DOCUMENTATION](./report.pdf) [to-do]
+## Documentation
+You can read our final technical documentation about this project here [DOCUMENTATION](./report.pdf)

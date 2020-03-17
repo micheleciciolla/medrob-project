@@ -44,24 +44,16 @@ classdef kinematicsRCM
             
             % Q : current config 1x6
             % err : error in pose
-            % mode: 1 = visual servoing , 0 = go home proportional control
             
             % given error and current configuration returns next
             % configuration to converge to desired pose -> err=0
             
             J = kinematicsRCM.compute_jacobian(Q);
             
-            if mode==0
-                v = 7.5*[1 1 1 2 0.01 0]*10^-2;
-                alfa = diag(v);
-                J = pinv(J); % newton
-            end
+            v = 6.5*[1 1 1 1 0.02 0]*10^-2;           
+            alfa = diag(v);
+            J = pinv(J); % newton
             
-            if mode==1
-                % NOT USED
-                v = [0.3 0.3 0.3 0.3 0.3 0.3]*5;
-                alfa = diag(v);
-            end
             % computing newton method for inverse kinematics
             Q = Q' + alfa*J*(err);
             

@@ -112,7 +112,7 @@ home_pose_wrt_world = [ -1.54;   -4.069e-2;    +7.25e-1;  -1.79e+2; -4.2305e-02;
 utils.setPose(home_pose_wrt_world,h_Dummy,-1,ID,vrep);
 
 %% starting from zero config
-% kinematicsRCM.setJoints(ID, vrep, h_Joints, zeros(6,1));
+kinematicsRCM.setJoints(ID, vrep, h_Joints, zeros(6,1));
 pause(0.3);
 
 % getting home_pose wrt RCM for mode 0
@@ -143,7 +143,7 @@ fprintf(2,'******* STARTING ******* \n'); pause(0.1);
 %Initialize Colors for landmarks (Initial Reset)
 init_landmarks_color(ID,vrep)
 
-while spot<6
+while spot<5
     
     while mode==1
         
@@ -272,9 +272,8 @@ while spot<6
             PlotData.plot_image_error_and_force(spot, us_ee, vs_ee, us_desired, vs_desired,force,time);
         end
         
-        ghost_reached
         %% evaluating exit condition
-        if norm(pose_error(1:2)) <= 4*10^-4 && ghost_reached
+        if norm(pose_error(1:2)) <= 4.5*10^-4 && ghost_reached
             
             mode =0;
             stem(time, force,'g','square' ,'LineWidth', 2 );
@@ -344,6 +343,8 @@ while spot<6
 end
 
 fprintf(2,'**** PROCESS ENDED ***** \n');
+kinematicsRCM.setJoints(ID, vrep, h_Joints, zeros(6,1));
+pause(0.3);
 
 function [] = init_landmarks_color(ID,vrep)
 %Initialize Colors for landmarks (Initial Reset)

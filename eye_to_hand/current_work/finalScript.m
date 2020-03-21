@@ -144,7 +144,7 @@ fprintf(2,'******* STARTING ******* \n'); pause(0.1);
 init_landmarks_color(ID,vrep)
 
 while spot<5
-    
+    attemps = 0; % how many times we allow the algo to converge
     while mode==1
         
         time = time +1;
@@ -204,6 +204,13 @@ while spot<5
         
         [~, ~, force, torque] = vrep.simxReadForceSensor(ID, h_FS, vrep.simx_opmode_streaming);
         force_torque=[force'; torque'];
+        
+        if(norm(round(force_torque,3))~=0)
+            % i start considering attemps when i start touching the skin
+            % this process cuts off long searching of the solution
+            attemps = attemps+1;
+        end
+        
         force_correction = L*C*(force_torque_d-force_torque);
         
         error = image_error + force_correction;
@@ -273,7 +280,7 @@ while spot<5
         end
         
         %% evaluating exit condition
-        if norm(pose_error(1:2)) <= 4.5*10^-4 && ghost_reached
+        if (norm(pose_error(1:2)) <= 4.5*10^-4 && ghost_reached) || attemps>190
             
             mode =0;
             stem(time, force,'g','square' ,'LineWidth', 2 );
@@ -322,7 +329,7 @@ while spot<5
         if(max(error(1:3))<=0.1 && norm(pose_error(1:3),2) <= 0.01)
             spot = spot+1;
             
-            if spot>5
+            if spot>4
                 % Restore initial colors of landmarks
                 init_landmarks_color(ID,vrep)
                 break

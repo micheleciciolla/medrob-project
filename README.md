@@ -9,11 +9,8 @@ We started working on a implementation made by other students from Medical Robs 
 
 ## Running the test
 
-First open the finalScene.ttt scene and run it
-Then open finalScript.m and run. 
-
 ```
-you can disable the plot 
+open finalScene.ttt first, run it, open finalScript.m then
 ```
 
 ## Video Demo

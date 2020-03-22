@@ -11,7 +11,7 @@ We started working on a implementation made by other students from Medical Robs 
 
 ```
 cd /eye_to_hand/current_work
-vrep finalScene.ttt 
+vrep finalScene.ttt -s
 matlab finalScript.m
 ```
 

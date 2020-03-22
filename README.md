@@ -10,6 +10,7 @@ We started working on a implementation made by other students from Medical Robs 
 ## Running the test
 
 ```
+cd /eye_to_hand/current_work
 vrep finalScene.ttt 
 matlab finalScript.m
 ```

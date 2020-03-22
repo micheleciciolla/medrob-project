@@ -10,7 +10,8 @@ We started working on a implementation made by other students from Medical Robs 
 ## Running the test
 
 ```
-open finalScene.ttt first, run it, open finalScript.m then
+vrep finalScene.ttt 
+matlab finalScript.m
 ```
 
 ## Video Demo

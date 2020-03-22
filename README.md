@@ -7,6 +7,15 @@ Final Project for Medical Robotics course 2018-2019, Università La Sapienza Rom
 ## Approach
 We started working on a implementation made by other students from Medical Robs course. Our task is to upgrade and implement new features. In particular we performed a parameter tuning for convergence and we implemented the inverse kinematics of the model starting from the original paper.
 
+## Running the test
+
+First open the finalScene.ttt scene and run it
+Then open finalScript.m and run. 
+
+```
+you can disable the plot 
+```
+
 ## Video Demo
 Click on the image for complete video
 [![SC2 Video](demo.gif)](https://youtu.be/TtCsiUMK5Uk) 

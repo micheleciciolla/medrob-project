@@ -344,7 +344,8 @@ while spot<5
             fprintf(1,'GOING TOWARD LANDMARK: %d \n',spot); pause(2);
             
             mode=1;
-            figure(spot);
+            f =figure(spot);
+            movegui(f,'west');
             
         end
         

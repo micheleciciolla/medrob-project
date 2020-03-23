@@ -207,8 +207,8 @@ classdef utils
             % this function computes a grasp (only image rendering)
             % no interaction with objects
             
-            sx = vrep.simxGetJointPosition(clientID,h_7sx,vrep.simx_opmode_streaming);
-            dx = vrep.simxGetJointPosition(clientID,h_7dx,vrep.simx_opmode_streaming);
+            sx = 0; %vrep.simxGetJointPosition(clientID,h_7sx,vrep.simx_opmode_streaming);
+            dx = 0; %vrep.simxGetJointPosition(clientID,h_7dx,vrep.simx_opmode_streaming);
             
             % open
             while sx < 3.14/4

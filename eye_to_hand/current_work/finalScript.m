@@ -44,6 +44,9 @@ pause(2);
 [~, h_j5] = vrep.simxGetObjectHandle(ID,'J2_TOOL1',vrep.simx_opmode_blocking);
 [~, h_j6] = vrep.simxGetObjectHandle(ID,'J3_TOOL1',vrep.simx_opmode_blocking);
 
+[~, h_7sx] = vrep.simxGetObjectHandle(ID,'J3_sx_TOOL1',vrep.simx_opmode_blocking);
+[~, h_7dx] = vrep.simxGetObjectHandle(ID,'J3_dx_TOOL1',vrep.simx_opmode_blocking);
+
 %--------------------------------------------------------------------------
 
 % collection of all joint handles
@@ -284,7 +287,7 @@ while spot<5
             
             mode =0;
             stem(time, force,'g','square' ,'LineWidth', 2 );
-            
+            utils.compute_grasp(ID, h_7sx, h_7dx, vrep);
             fprintf(1,'********** OK ********** \n');
             green_landmarks_color(ID,vrep,spot);
             pause(3);

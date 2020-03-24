@@ -10,14 +10,14 @@ We started working on a implementation made by other students from Medical Robs 
 ## Running the test
 
 ```
-cd /eye_to_hand/current_work
+cd /current_work_2020
 vrep finalScene.ttt -s
 matlab finalScript.m
 ```
 
 ## Video Demo
 Click on the image for complete video
-[![SC2 Video](demo.gif)](https://youtu.be/TtCsiUMK5Uk) 
+[![SC2 Video](./docs_video/demo.gif)](https://youtu.be/TtCsiUMK5Uk) 
 
 ## Team
 * Michele Ciciolla <a href="https://github.com/micheleciciolla"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Octicons-mark-github.svg/1024px-Octicons-mark-github.svg.png" width="30"></a>
@@ -26,4 +26,4 @@ Click on the image for complete video
 * Flavio Lorenzi <a href="https://github.com/FlavioLorenzi"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Octicons-mark-github.svg/1024px-Octicons-mark-github.svg.png" width="30"></a>
 
 ## Documentation
-You can read our final technical documentation about this project here [DOCUMENTATION](./report.pdf)
+You can read our final technical documentation about this project here [DOCUMENTATION](./docs_video/report.pdf)

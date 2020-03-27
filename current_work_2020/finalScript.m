@@ -273,26 +273,31 @@ while spot<5
         x_coord(time) = ee_wrt_RCM(1);
         y_coord(time) = ee_wrt_RCM(2);
         z_coord(time) = ee_wrt_RCM(3);
+        
         total_error(time) = norm(error,2);
         
         force = norm(round(force_torque,3));
         
         %% live plot of force and image error
         if(mod(time,15)==0)
-            PlotData.plot_image_error_and_force(spot, us_ee, vs_ee, us_desired, vs_desired,force,time);
+            % PlotData.plot_image_error_and_force(spot, us_ee, vs_ee, us_desired, vs_desired,force,time);
         end
         
         %% evaluating exit condition
         if (norm(pose_error(1:2)) <= 4.5*10^-4 && ghost_reached) || attemps>190
             
-            mode =0;
-            stem(time, force,'g','square' ,'LineWidth', 2 );
+            mode = 0;
+            % stem(time, force,'g','square' ,'LineWidth', 2 );
             utils.compute_grasp(ID, h_7sx, h_7dx, vrep);
             fprintf(1,'********** OK ********** \n');
             green_landmarks_color(ID,vrep,spot);
             pause(3);
             ghost_reached = false;
             time = 0;
+            
+            % final plot of EE position during entire project 
+            PlotData.plot_EE(spot,x_coord,y_coord,z_coord);
+
         end
         
     end

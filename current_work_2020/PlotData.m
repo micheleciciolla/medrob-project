@@ -4,7 +4,7 @@ classdef PlotData
     methods (Static)
         function [] = plot_EE(spot,x,y,z)
             
-            figure(spot);
+            % figure(spot);
             grid on;
             
             

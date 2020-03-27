@@ -280,14 +280,14 @@ while spot<5
         
         %% live plot of force and image error
         if(mod(time,15)==0)
-            % PlotData.plot_image_error_and_force(spot, us_ee, vs_ee, us_desired, vs_desired,force,time);
+            PlotData.plot_image_error_and_force(spot, us_ee, vs_ee, us_desired, vs_desired,force,time);
         end
         
         %% evaluating exit condition
         if (norm(pose_error(1:2)) <= 4.5*10^-4 && ghost_reached) || attemps>190
             
             mode = 0;
-            % stem(time, force,'g','square' ,'LineWidth', 2 );
+            stem(time, force,'g','square' ,'LineWidth', 2 );
             utils.compute_grasp(ID, h_7sx, h_7dx, vrep);
             fprintf(1,'********** OK ********** \n');
             green_landmarks_color(ID,vrep,spot);
@@ -296,7 +296,7 @@ while spot<5
             time = 0;
             
             % final plot of EE position during entire project 
-            PlotData.plot_EE(spot,x_coord,y_coord,z_coord);
+            % PlotData.plot_EE(spot,x_coord,y_coord,z_coord);
 
         end
         

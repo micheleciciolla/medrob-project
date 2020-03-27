@@ -211,7 +211,9 @@ classdef utils
             dx = 0; %vrep.simxGetJointPosition(clientID,h_7dx,vrep.simx_opmode_streaming);
             
             % open
+            disp("opening")
             while sx < 3.14/4
+                
                 [~] = vrep.simxSetJointPosition(clientID, h_7sx, sx, vrep.simx_opmode_streaming);
                 sx = sx + 0.02;
                 [~] = vrep.simxSetJointPosition(clientID, h_7dx, sx, vrep.simx_opmode_streaming);
@@ -222,6 +224,8 @@ classdef utils
             pause(1);
             
             % close
+            disp("closing")
+            
             while sx > 0
                 [~] = vrep.simxSetJointPosition(clientID, h_7sx, sx, vrep.simx_opmode_streaming);
                 sx = sx - 0.02;

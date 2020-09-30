@@ -10,9 +10,7 @@ Final Project for Medical Robotics course 2018-2019, Università La Sapienza Rom
 We started working on a implementation made by other students from Medical Robs course. Our task is to upgrade and implement new features. In particular we performed a parameter tuning for convergence and we implemented the inverse kinematics of the model starting from the original paper.
 
 ## Project status
-```bash
-Completed
-```
+Completed <a href="https://github.com/micheleciciolla/vehicles-platooning"><img src="https://www.flaticon.com/svg/static/icons/svg/214/214353.svg" width="30"></a>
 
 ## Running the test
 

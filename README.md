@@ -1,4 +1,4 @@
-# medrob-project
+# A Visual Servoing controller for a Surgical Anthropomorphic Robot (Da Vinci)
 
 ![Swagger Validator](https://img.shields.io/swagger/valid/3.0?label=Ubuntu%2016.04%20LTS&logo=Ubuntu&specUrl=https%3A%2F%2Fraw.githubusercontent.com%2FOAI%2FOpenAPI-Specification%2Fmaster%2Fexamples%2Fv2.0%2Fjson%2Fpetstore-expanded.json)
 

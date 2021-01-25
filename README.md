@@ -2,6 +2,9 @@
 
 ![Swagger Validator](https://img.shields.io/swagger/valid/3.0?label=Ubuntu%2016.04%20LTS&logo=Ubuntu&specUrl=https%3A%2F%2Fraw.githubusercontent.com%2FOAI%2FOpenAPI-Specification%2Fmaster%2Fexamples%2Fv2.0%2Fjson%2Fpetstore-expanded.json)
 
+![Swagger Validator](https://badgen.net/github/status/micromatch/micromatch/4.0.1)
+
+
 Final Project for Medical Robotics course 2018-2019, Università La Sapienza Roma
 
 <a href="https://www.dis.uniroma1.it/"><img src="http://www.dis.uniroma1.it/sites/default/files/marchio%20logo%20eng%20jpg.jpg" width="500"></a>

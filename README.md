@@ -4,8 +4,7 @@
 
 ![Swagger Validator](https://badgen.net/github/status/micromatch/micromatch/4.0.1)
 
-
-Final Project for Medical Robotics course 2018-2019, Università La Sapienza Roma
+Final Project for [Medical Robotics](https://elearning.uniroma1.it/enrol/index.php?id=7465) course 2018-2019, Università La Sapienza Roma
 
 <a href="https://www.dis.uniroma1.it/"><img src="http://www.dis.uniroma1.it/sites/default/files/marchio%20logo%20eng%20jpg.jpg" width="500"></a>
 
